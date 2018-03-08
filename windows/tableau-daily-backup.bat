@@ -46,7 +46,7 @@ forfiles -p %BACKUPPATH% -s -m *.tsbak /D -7 /C "cmd /c del @path"
 :: You will likely want to adjust this if you plan to run this script more frequently.
  
 echo %date% %time%: Backing up data...
-tabadmin backup %BACKUPPATH%\eif-uat-backup -d
+tabadmin backup %BACKUPPATH%\tableau-server-backup -d
 :: Backs up the Tableau Server and creates a file ts_backup.tsbak with the system date appended to the filename
 echo %date% %time%: *** Housekeeping completed ***
 :: Prints that text to the DOS prompt to show that the jobs ar

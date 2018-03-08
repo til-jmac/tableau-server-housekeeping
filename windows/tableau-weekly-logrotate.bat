@@ -47,6 +47,6 @@ forfiles -p %LOGPATH% -s -m *.zip /D -28 /C "cmd /c del @path"
  
 echo %date% %time%: Backing up log files...
 tabadmin ziplogs -l -n -f
-move logs.zip %LOGPATH%\logs-uat-%SAVESTAMP%.zip
+move logs.zip %LOGPATH%\logs-%SAVESTAMP%.zip
 :: Grabs the Tableau Server logfiles and zips them
 :: Then moves the zip file to the specified directory appending the system date to the filename
