@@ -15,7 +15,14 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :: Sets a global script variable for later
-SET overwrite_requested=0
+SET overwrite_requested=false
+
+:: Let's grab a consistent date in the same format that Tableau Server writes the date to the end of the backup file name
+:set_date
+FOR /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') DO SET "dt=%%a"
+SET "YY=%dt:~2,2%" & SET "YYYY=%dt:~0,4%" & SET "MM=%dt:~4,2%" & SET "DD=%dt:~6,2%"
+SET "HH=%dt:~8,2%" & SET "Min=%dt:~10,2%" & SET "Sec=%dt:~12,2%"
+SET "mydate=%YYYY%-%MM%-%DD%"
 
 :: Parses command line parameters
 :parse_command_line_params
@@ -28,8 +35,8 @@ IF "%1"=="-p" GOTO tsmpassword_arg
 IF "%1"=="--password" GOTO tsmpassword_arg
 IF "%1"=="-d" GOTO backupdays_arg
 IF "%1"=="--days" GOTO backupdays_arg
-IF "%1"=="-o" SET overwrite_requested=1
-IF "%1"=="--overwrite" SET overwrite_requested=1
+IF "%1"=="-o" GOTO overwrite_requested_arg
+IF "%1"=="--overwrite" GOTO overwrite_requested_arg
 IF "%1"=="-h" GOTO show_help
 IF "%1"=="--help" GOTO show_help
 
@@ -61,6 +68,13 @@ ECHO %date% %time% : Setting the backup retention period to %backupdays% days
 SHIFT
 GOTO parse_command_line_params
 
+:overwrite_requested_arg
+SHIFT
+SET overwrite_requested=%1
+ECHO %date% %time% : Setting overwrite request to %overwrite_requested%
+SHIFT
+GOTO parse_command_line_params
+
 :end_parse
 
 :: Series of checks to ensure command line params are input and valid
@@ -88,12 +102,29 @@ IF "%backupdays%" == "" (
 	GOTO show_help
 	)
 
-:: Let's grab a consistent date in the same format that Tableau Server writes the date to the end of the backup file name
-:set_date
-FOR /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') DO SET "dt=%%a"
-SET "YY=%dt:~2,2%" & SET "YYYY=%dt:~0,4%" & SET "MM=%dt:~4,2%" & SET "DD=%dt:~6,2%"
-SET "HH=%dt:~8,2%" & SET "Min=%dt:~10,2%" & SET "Sec=%dt:~12,2%"
-SET "mydate=%YYYY%-%MM%-%DD%"
+:: The new TSM backup command will not overwrite a file of the same name
+:: Given we are appending today's date to the end of the filename this should not be a problem if you are backing up daily
+:: However, if you are backing up more frequently than that, for testing for example, you may want to overwrite the existing file 
+:: Using the '-o' parameter with this script will overwrite the existing file
+:: So let's check if this was used    
+:check_overwrite
+ECHO %date% %time% : Checking if overwrite was requested
+IF NOT DEFINED overwrite_requested ( 
+	ECHO ERROR: Please specify true/false for overwrite flag. Cancelling. 
+	GOTO show_help
+	)
+IF NOT %overwrite_requested% == true GOTO no_overwrite
+IF %overwrite_requested% == true GOTO overwrite 
+
+:: It was used so let's delete the current file if it's there
+:overwrite
+ECHO %date% %time% : Overwrite was requested. Cleaning out any existing file with the same name
+IF EXIST "%backuppath%\%filename%-%mydate%.tsbak" DEL /F "%backuppath%\%filename%-%mydate%.tsbak" >nul 2>&1
+GOTO bakup
+
+:: It wasn't used so let's just go ahead and backup
+:no_overwrite
+ECHO %date% %time% : Overwrite was not requested, proceeding
 
 :: Let's find the locations of some directories using tsm 
 :: ECHO Setting the script location variable
@@ -123,39 +154,24 @@ ECHO %backuppath%
 ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
 FORFILES -p "%backuppath%" -s -m *.tsbak /D -%backupdays% /C "cmd /c del @path" 2>nul
 
-:: The new TSM backup command will not overwrite a file of the same name
-:: Given we are appending today's date to the end of the filename this should not be a problem if you are backing up daily
-:: However, if you are backing up more frequently than that, for testing for example, you may want to overwrite the existing file 
-:: Using the '-o' parameter with this script will overwrite the existing file
-:: So let's check if this was used    
-:check_overwrite
-ECHO %date% %time% : Checking if overwrite was requested
-IF %overwrite_requested% EQU 1 (
-	GOTO overwrite 
-	) ELSE ( 
-	GOTO no_overwrite 
-	)
-
-:: It was used so let's delete the current file if it's there
-:overwrite
-ECHO %date% %time% : Overwrite was requested. Cleaning out any existing file with the same name
-IF EXIST "%backuppath%\%filename%-%mydate%.tsbak" DEL /F "%backuppath%\%filename%-%mydate%.tsbak" >nul 2>&1
-GOTO bakup
-
-:: It wasn't used so let's just go ahead and backup
-:no_overwrite
-ECHO %date% %time% : Overwrite was not requested, proceeding to backup
-
 :: Then we take the backup
 :bakup
 ECHO %date% %time% : Backing up Tableau Server data
 CALL tsm maintenance backup -f %filename% -d -u %tsmadmin% -p %tsmpassword%
-ECHO %date% %time% : Backup completed succesfully.
-EXIT /B 0
+
+:end_msg
+IF %ERRORLEVEL% EQU 0 (
+	ECHO %date% %time% : Backup completed succesfully. 
+	EXIT /B 0 
+	)
+IF %ERRORLEVEL% GTR 0 (
+	ECHO %date% %time% : Backup failed with exit code %ERRORLEVEL%
+	GOTO show_help
+	) 
 
 :show_help
 ECHO Usage: 
-ECHO tableau-server-backup-script.cmd -n ^<filename^> -u ^<USER^> -p ^<PASSWORD^> -d ^<Delete files older than N days^> -o
+ECHO tableau-server-backup-script.cmd -n ^<filename^> -u ^<USER^> -p ^<PASSWORD^> -d ^<Delete files older than N days^> -o ^<true/false^>
 ECHO Global parameters (use in sequence)
 ECHO 		-n,--name 		Name of the backup file (no spaces, periods or funny characters)
 ECHO 		-u,--username 		TSM administrator username
