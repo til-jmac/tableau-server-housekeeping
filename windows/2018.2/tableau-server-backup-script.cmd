@@ -16,7 +16,6 @@ if %ERRORLEVEL% NEQ 0 (
 
 :: Sets a global script variable for later
 SET overwrite_requested=0
-SET settings_export=0
 
 :: Parses command line parameters
 :parse_command_line_params
@@ -31,8 +30,6 @@ IF "%1"=="-d" GOTO backupdays_arg
 IF "%1"=="--days" GOTO backupdays_arg
 IF "%1"=="-o" SET overwrite_requested=1
 IF "%1"=="--overwrite" SET overwrite_requested=1
-IF "%1"=="-s" SET settings_export=1
-IF "%1"=="--with-settings" SET settings_export=1
 IF "%1"=="-h" GOTO show_help
 IF "%1"=="--help" GOTO show_help
 
@@ -149,26 +146,6 @@ GOTO bakup
 :no_overwrite
 ECHO %date% %time% : Overwrite was not requested, proceeding to backup
 
-:: With TSM your settings are no longer saved in your .tsbak backup file, you need to export them separately as a JSON file
-:: We can do this optionally as part of this script, with the '-s' parameter
-:: Let's check if this was invoked
-:check_settings_export
-ECHO %date% %time% : Checking if settings backup was selected
-IF %settings_export% EQU 1 (
-	GOTO do_settings_export 
-	) ELSE ( 
-	GOTO no_settings_export 
-	)
-
-:: It was, so let's export the settings
-:do_settings_export
-ECHO %date% %time% : Settings export was requested, backing up Tableau Server settings
-CALL tsm settings export --output-config-file %backuppath%\%filename%-config-%mydate%.json
-
-:: It was not, so let's proceed to backup
-:no_settings_export
-ECHO %date% %time% : Settings export was not requested, proceeding to backup 
-
 :: Then we take the backup
 :bakup
 ECHO %date% %time% : Backing up Tableau Server data
@@ -178,13 +155,12 @@ EXIT /B 0
 
 :show_help
 ECHO Usage: 
-ECHO tableau-server-backup-script.cmd -n ^<filename^> -u ^<USER^> -p ^<PASSWORD^> -d ^<Delete files older than N days^> -o -s
-ECHO Global parameters
-ECHO 		-n,--name 		Root name of the backup file
+ECHO tableau-server-backup-script.cmd -n ^<filename^> -u ^<USER^> -p ^<PASSWORD^> -d ^<Delete files older than N days^> -o
+ECHO Global parameters (use in sequence)
+ECHO 		-n,--name 		Name of the backup file (no spaces, periods or funny characters)
 ECHO 		-u,--username 		TSM administrator username
 ECHO 		-p,--password 		TSM administrator password 
 ECHO 		-d,--days 		Delete backup files in the backup location older than N days
 ECHO 		-o,--overwrite 		Overwrite any existing backup with the same name (takes appended date into account)
-ECHO 		-s,--with-settings 	Additionally export Tableau Server configuration settings as a JSON file to the same backup location
 ECHO 		-h,--help 		Show this help 
 EXIT /B 3
