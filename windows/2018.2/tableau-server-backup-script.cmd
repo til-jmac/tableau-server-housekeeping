@@ -1,6 +1,6 @@
 :: THE INFORMATION LAB HOUSEKEEPING SCRIPT
 :: Authored by Jonathan MacDonald
-:: Last updated 16/08/2018
+:: Last updated 23/08/2018
 :: How to use this script
 
 @echo OFF
