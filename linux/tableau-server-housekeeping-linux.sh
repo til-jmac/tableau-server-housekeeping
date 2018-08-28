@@ -43,44 +43,48 @@ tsmuser="tsmadmin"
 # What is your TSM administrator user's password?
 tsmpassword="tableau123"
 # Where is your Tableau Server data directory installed? No need to change if default
-datapath=$TABLEAU_SERVER_DATA_DIR
+data_path=$TABLEAU_SERVER_DATA_DIR
 
 # Do you want to copy your backups to another location after completion?
-copybackup="no"
+copy_backup="no"
 # If yes to above, where do you want to copy them? 
-backuppath="/tmp/backups/"
+external_backup_path="/tmp/backups/"
 # How many days do you want to keep old backup files for? 
-backupdays="7"
+backup_days="7"
 # What do you want to name your backup files? (will automatically append current date to this filename)
-backupname="tableau-server-backup"
+backup_name="tableau-server-backup"
 
 # Do you want to copy your archived logs to another location after completion?
-copylogs="no"
+copy_logs="no"
 # Where do you want to save your archived logs?
-logpath="/tmp/log-archives/"
+external_log_path="/tmp/log-archives/"
 # How many days to you want to keep archived log files for?
-logdays="7"
+log_days="7"
 # What do you want to name your logs file? (will automatically append current date to this filename)
-logsname="logs"
+log_name="logs"
 
 # END OF VARIABLES SECTION
 
 # LOGS SECTION
 
+# get the path to the log archive folder
+log_path=$(tsm configuration get -k basefilepath.log_archive -u $tsmuser -p $tsmpassword)
+echo $TIMESTAMP "The path for storing log archives is $logpath" 
+
 #go to logs path
-cd $datapath/data/tabsvc/files/log-archives/
-echo $TIMESTAMP "Cleaning up old log files..."
+#cd $log_path
+
 # count the number of log files eligible for deletion and output 
+echo $TIMESTAMP "Cleaning up old log files..."
 lines=$(find $datapath/data/tabsvc/files/log-archives/ -type f -name '*.zip' -mtime +$logdays | wc -l)
 if [ $lines -eq 0 ]; then 
 	echo $TIMESTAMP $lines found, skipping...
 	
 	else $TIMESTAMP $lines found, deleting...
 		#remove log archives older than the specified number of days
-		find $datapath/data/tabsvc/files/log-archives/ -type f -name '*.zip' -mtime +$logdays -exec rm {} \;
+		find $log_path -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
 	echo $TIMESTAMP "Cleaning up completed."		
 fi
-
 
 #archive current logs 
 echo $TIMESTAMP "Archiving current logs..."
@@ -89,27 +93,33 @@ tsm maintenance ziplogs -a -t -o -f logs-$DATE.zip -u $tsmuser -p $tsmpassword
 if [ "$copylogs" == "yes" ];
 	then
 	echo $TIMESTAMP "Copying logs to remote share"
-	cp $datapath/data/tabsvc/files/log-archives/$logsname-$DATE
+	cp $log_path/$log_name-$DATE $external_log_path/ 
 fi
 
 # END OF LOGS SECTION
 
 # BACKUP SECTION
 
-cd $datapath/data/tabsvc/files/backups/
-echo $TIMESTAMP "Cleaning up old backups..."
+# get the path to the backups folder
+backup_path=$(tsm configuration get -k basefilepath.backuprestore -u $tsmuser -p $tsmpassword)
+echo $TIMESTAMP "The path for storing backups is $backup_path" 
+
+# go to the backup path
+# cd $backup_path
+
 # count the number of log files eligible for deletion and output 
-lines=$(find $datapath/data/tabsvc/files/backups/ -type f -name '*.tsbak' -mtime +$backupdays | wc -l)
+echo $TIMESTAMP "Cleaning up old backups..."
+lines=$(find $backup_path -type f -name '*.tsbak' -mtime +$backup_days | wc -l)
 if [ $lines -eq 0 ]; then 
 	echo $TIMESTAMP $lines old backups found, skipping...
 	else $TIMESTAMP $lines old backups found, deleting...
 		#remove backup files older than N days
-		find $datapath/data/tabsvc/files/backups/ -type f -name '*.tsbak' -mtime +$backupdays -exec rm {} \;
+		find $backup_path -type f -name '*.tsbak' -mtime +$backup_days -exec rm {} \;
 fi
 
 #export current settings
 echo $TIMESTAMP "Exporting current settings..."
-tsm settings export -f $datapath/data/tabsvc/files/backups/settings.json -u $tsmuser -p $tsmpassword
+tsm settings export -f $backup_path/settings.json -u $tsmuser -p $tsmpassword
 #create current backup
 echo $TIMESTAMP "Backup up Tableau Server data..."
 tsm maintenance backup -f $backupname -d -u $tsmuser -p $tsmpassword
@@ -117,7 +127,7 @@ tsm maintenance backup -f $backupname -d -u $tsmuser -p $tsmpassword
 if [ "$copybackup" == "yes" ];
 	then
 	echo $TIMESTAMP "Copying backup and settings to remote share"
-	cp $datapath/data/tabsvc/files/backups/* $backuppath/
+	cp $backup_path/* $external_backup_path/
 fi
 
 # END OF BACKUP SECTION
