@@ -124,6 +124,6 @@ ECHO tableau-server-log-archive-script.cmd -u ^<USER^> -p ^<PASSWORD^> -d ^<Dele
 ECHO Global parameters (use in sequence):
 ECHO 		-u,--username 		TSM administrator username
 ECHO 		-p,--password 		TSM administrator password 
-ECHO 		-d,--days 		Delete backup files in the backup location older than N days
+ECHO 		-d,--days 		Delete log archives in the log archive path older than N days
 ECHO 		-h,--help 		Show this help 
 EXIT /B 3
