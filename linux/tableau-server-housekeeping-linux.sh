@@ -37,7 +37,7 @@ VERSION=$TABLEAU_SERVER_DATA_DIR_VERSION
 # Path to TSM executable
 TSMPATH="/opt/tableau/tableau_server/packages/customer-bin.$VERSION"
 # Export this path to environment variables (for cron to run properly)
-PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:$TSMPATH
+#PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:$TSMPATH
 # Who is your TSM administrator user?
 tsmuser="tsmadmin"
 # What is your TSM administrator user's password?
@@ -69,14 +69,14 @@ log_name="logs"
 
 # get the path to the log archive folder
 log_path=$(tsm configuration get -k basefilepath.log_archive -u $tsmuser -p $tsmpassword)
-echo $TIMESTAMP "The path for storing log archives is $logpath" 
+echo $TIMESTAMP "The path for storing log archives is $log_path" 
 
 #go to logs path
 #cd $log_path
 
 # count the number of log files eligible for deletion and output 
 echo $TIMESTAMP "Cleaning up old log files..."
-lines=$(find $datapath/data/tabsvc/files/log-archives/ -type f -name '*.zip' -mtime +$logdays | wc -l)
+lines=$(find $log_path -type f -name '*.zip' -mtime +$log_days | wc -l)
 if [ $lines -eq 0 ]; then 
 	echo $TIMESTAMP $lines found, skipping...
 	
