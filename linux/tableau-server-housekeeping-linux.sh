@@ -33,7 +33,7 @@ DATE=`date +%Y-%m-%d`
 # Grab the current datetime for timestamping the log entries
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 # Tableau Server version
-VERSION="10500.18.0210.2209"
+VERSION=$TABLEAU_SERVER_DATA_DIR_VERSION
 # Path to TSM executable
 TSMPATH="/opt/tableau/tableau_server/packages/customer-bin.$VERSION"
 # Export this path to environment variables (for cron to run properly)
@@ -43,7 +43,7 @@ tsmuser="tsmadmin"
 # What is your TSM administrator user's password?
 tsmpassword="tableau123"
 # Where is your Tableau Server data directory installed? No need to change if default
-datapath="/var/opt/tableau/tableau_server"
+datapath=$TABLEAU_SERVER_DATA_DIR
 
 # Do you want to copy your backups to another location after completion?
 copybackup="no"
