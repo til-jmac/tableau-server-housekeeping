@@ -8,7 +8,7 @@
 :: This script helps with the first part, by archiving old log files. This script will also clean out the ARCHiVED logs older than N days.
 :: To clean out the current, active log files, you will want to run the cleanup command, I have a script for that too.
 :: 1) I would recommend you schedule this script to run once a week
-:: 2) Use this script in conjunction with my log archival and cleanup scripts, which you can find at the Github link above
+:: 2) Use this script in conjunction with my backup and cleanup scripts, which you can find at the Github link above
 :: 3) Run this script with elevated privileges as the user that has permissions to run TSM
 :: 4) You MUST input all command line parameters in the order specified, or the script will fail
 :: Give me a shout on Twitter @macdonaldj for questions, comments or feedback
