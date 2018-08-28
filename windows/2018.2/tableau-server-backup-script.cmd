@@ -1,7 +1,14 @@
-:: THE INFORMATION LAB HOUSEKEEPING SCRIPT
+:: THE INFORMATION LAB BACKUP SCRIPT
+:: https://github.com/til-jmac/tableau-server-housekeeping
 :: Authored by Jonathan MacDonald
-:: Last updated 23/08/2018
+:: Last updated 27/08/2018
 :: How to use this script
+:: 1) Create a scripts directory somewhere that makes sense for this (and other) scripts to be kept. Inside your Tableau Server 'data' folder is a good place. 
+:: 2) The command line parameters are ALL required. Ensure you use them in the correct order or the script will fail
+:: 3) Run this script as a user with permissions to authenticate to TSM. Also run it with elevated (administrator) privileges.
+:: 4) I would recommend you backup daily. 
+:: 5) Use this script in conjunction with my log archival and cleanup scripts, which you can find at the Github link above
+:: Give me a shout on Twitter @macdonaldj for questions, comments or feedback
 
 @echo OFF
 cls
@@ -43,35 +50,35 @@ IF "%1"=="--help" GOTO show_help
 :name_arg
 SHIFT
 SET filename=%1
-ECHO %date% %time% : Setting the filename to "%filename%"
+ECHO %date% %time% : Setting the filename to: "%filename%"
 SHIFT
 GOTO parse_command_line_params
 
 :tsmadmin_arg
 SHIFT
 SET tsmadmin=%1
-ECHO %date% %time% : Executing TSM as user: %tsmadmin%
+ECHO %date% %time% : Executing TSM as user: "%tsmadmin%"
 SHIFT
 GOTO parse_command_line_params
 
 :tsmpassword_arg
 SHIFT
 SET tsmpassword=%1
-ECHO %date% %time% : Using %tsmadmin% password ***SECRET***
+ECHO %date% %time% : Using %tsmadmin% password: "***SECRET***"
 SHIFT
 GOTO parse_command_line_params
 
 :backupdays_arg
 SHIFT
 SET backupdays=%1
-ECHO %date% %time% : Setting the backup retention period to %backupdays% days
+ECHO %date% %time% : Setting the backup retention period to: "%backupdays%" days
 SHIFT
 GOTO parse_command_line_params
 
 :overwrite_requested_arg
 SHIFT
 SET overwrite_requested=%1
-ECHO %date% %time% : Setting overwrite request to %overwrite_requested%
+ECHO %date% %time% : Setting overwrite request to: "%overwrite_requested%"
 SHIFT
 GOTO parse_command_line_params
 
@@ -172,7 +179,7 @@ IF %ERRORLEVEL% GTR 0 (
 :show_help
 ECHO Usage: 
 ECHO tableau-server-backup-script.cmd -n ^<filename^> -u ^<USER^> -p ^<PASSWORD^> -d ^<Delete files older than N days^> -o ^<true/false^>
-ECHO Global parameters (use in sequence)
+ECHO Required parameters (use in sequence):
 ECHO 		-n,--name 		Name of the backup file (no spaces, periods or funny characters)
 ECHO 		-u,--username 		TSM administrator username
 ECHO 		-p,--password 		TSM administrator password 
