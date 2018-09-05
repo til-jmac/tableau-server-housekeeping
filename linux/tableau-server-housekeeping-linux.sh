@@ -122,7 +122,7 @@ echo $TIMESTAMP "Exporting current settings..."
 tsm settings export -f $backup_path/settings.json -u $tsmuser -p $tsmpassword
 #create current backup
 echo $TIMESTAMP "Backup up Tableau Server data..."
-tsm maintenance backup -f $backupname -d -u $tsmuser -p $tsmpassword
+tsm maintenance backup -f $backup_name -d -u $tsmuser -p $tsmpassword
 #copy backups to different location (optional)
 if [ "$copybackup" == "yes" ];
 	then
