@@ -3,27 +3,26 @@
 #Originally created by Jonathan MacDonald @ The Information Lab
 
 # 	HOW TO USE THIS SCRIPT:
-#		Create a new directory called scripts in your Tableau server data directory… 
-#			mkdir /var/opt/tableau/tableau_server/data/scripts
+#		Create a new directory called scripts in your Tableau server directory 
+#			mkdir /var/opt/tableau/tableau_server/scripts
 #
-#		Copy this file to your server into the above folder… 
-#			cp tableau-server-housekeeping.sh /var/opt/tableau/tableau_server/data/scripts/
+#		Copy this file to your server into the above folder
+#			cp tableau-server-housekeeping.sh /var/opt/tableau/tableau_server/scripts/
 #
-#		Change ownership of this directory and its contents to user:tsmagent and group:tableau… 
-#			sudo chown -R tsmagent:tableau /var/opt/tableau/tableau_server/data/scripts/
+#		Change ownership of this directory and its contents to user:tableau and group:tableau
+#			sudo chown -R tableau:tableau /var/opt/tableau/tableau_server/scripts/
 #
-#		Make the script executable… 
-#			sudo chmod +x /var/opt/tableau/tableau_server/data/scripts/tableau-server-housekeeping.sh
+#		Make the script executable
+#			sudo chmod +x /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh
 #
-#		Execute the script as the tsm admin user to test it works correctly in your environment…
-#			su $tsmuser -c /var/opt/tableau/tableau_server/data/scripts/tableau-server-housekeeping.sh
+#		Execute the script as the tsm admin user to test it works correctly in your environment
+#			sudo su -l $tsmuser -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh
 #
-#		Schedule it using cron to run on a regular basis…
-#			su $tsmuser -c "crontab -e"
+#		Schedule it using cron to run on a regular basis
+#			sudo su -l $tsmuser -c "crontab -e"
 #		
-#		For example, to schedule it to run once a day at 01:00, add this to your crontab…
-#			0 1 * * * /var/opt/tableau/tableau_server/data/scripts/tableau-server-housekeeping-linux.sh > /home/$tsmuser/tableau-server-housekeeping.log
-
+#		For example, to schedule it to run once a day at 01:00, add this to your crontab
+#			0 1 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping-linux.sh > /home/$tsmuser/tableau-server-housekeeping.log
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
@@ -32,19 +31,6 @@
 DATE=`date +%Y-%m-%d`
 # Grab the current datetime for timestamping the log entries
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-# Tableau Server version
-VERSION=$TABLEAU_SERVER_DATA_DIR_VERSION
-# Path to TSM executable
-TSMPATH="/opt/tableau/tableau_server/packages/customer-bin.$VERSION"
-# Export this path to environment variables (for cron to run properly)
-#PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:$TSMPATH
-# Who is your TSM administrator user?
-tsmuser="tsmadmin"
-# What is your TSM administrator user's password?
-tsmpassword="tableau123"
-# Where is your Tableau Server data directory installed? No need to change if default
-data_path=$TABLEAU_SERVER_DATA_DIR
-
 # Do you want to copy your backups to another location after completion?
 copy_backup="no"
 # If yes to above, where do you want to copy them? 
@@ -53,7 +39,6 @@ external_backup_path="/tmp/backups/"
 backup_days="7"
 # What do you want to name your backup files? (will automatically append current date to this filename)
 backup_name="tableau-server-backup"
-
 # Do you want to copy your archived logs to another location after completion?
 copy_logs="no"
 # Where do you want to save your archived logs?
@@ -64,6 +49,22 @@ log_days="7"
 log_name="logs"
 
 # END OF VARIABLES SECTION
+
+# LOAD ENVIRONMENT & USER INPUT
+
+# Get tsm username from command line
+tsmuser=$1
+# Get tsm password from command line
+tsmpassword=$2 
+
+load_environment_file() {
+  if [[ -f /etc/opt/tableau/tableau_server/environment.bash ]]; then
+    source /etc/opt/tableau/tableau_server/environment.bash
+    env_file_exists=1
+  fi
+}
+
+source /etc/profile.d/tableau_server.sh
 
 # LOGS SECTION
 
@@ -122,7 +123,7 @@ echo $TIMESTAMP "Exporting current settings..."
 tsm settings export -f $backup_path/settings.json -u $tsmuser -p $tsmpassword
 #create current backup
 echo $TIMESTAMP "Backup up Tableau Server data..."
-tsm maintenance backup -f $backupname -d -u $tsmuser -p $tsmpassword
+tsm maintenance backup -f $backup_name -d -u $tsmuser -p $tsmpassword
 #copy backups to different location (optional)
 if [ "$copybackup" == "yes" ];
 	then
