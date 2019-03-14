@@ -17,7 +17,7 @@ load_environment_file() {
 source /etc/profile.d/tableau_server.sh
 
 # Some more variables
-script_url=https://raw.githubusercontent.com/til-jmac/tableau-server-housekeeping/master/linux/tableau-server-housekeeping-linux.sh
+script_url=https://raw.githubusercontent.com/til-jmac/tableau-server-housekeeping/master/linux/tableau-server-housekeeping-linux.bash
 script_file='tableau-server-housekeeping-linux.sh'
 script_dir=/var/opt/tableau/tableau_server/scripts
 tmp_dir=/tmp
