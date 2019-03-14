@@ -16,7 +16,10 @@
 #			sudo chmod +x /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh
 #
 #		Execute the script as the tsm admin user to test it works correctly in your environment
-#			sudo su -l $tsmuser -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh
+#			sudo su -l $tsmuser -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh 'tsmusername' 'tsmpassword'
+#
+#		NOTE you have to add your tsm username and password at the end of the command to execute the script. 
+#		This avoids you having to hardcode credentials into the script itself
 #
 #		Schedule it using cron to run on a regular basis
 #			sudo su -l $tsmuser -c "crontab -e"
