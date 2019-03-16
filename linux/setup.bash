@@ -36,4 +36,3 @@ chmod +x $script_dir/$script_file
 
 # Script is set up, now to schedule in crontab
 echo 'Tableau Server housekeeping script is now installed. Please refer to the script documentation to schedule in crontab'
-exit 0
