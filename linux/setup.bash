@@ -20,7 +20,7 @@ load_environment_file() {
 # Some more variables
 script_url='https://raw.githubusercontent.com/til-jmac/tableau-server-housekeeping/master/linux/tableau-server-housekeeping-linux.bash'
 script_file='tableau-server-housekeeping-linux.bash'
-script_dir='$TABLEAU_SERVER_DATA_DIR/scripts'
+script_dir="${TABLEAU_SERVER_DATA_DIR}/scripts"
 tmp_dir='/tmp'
 
 # Setting up housekeeping script
