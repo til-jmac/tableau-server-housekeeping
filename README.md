@@ -16,12 +16,12 @@ These are divided into pre-2018.2 and post-2018.2 sections.
 `tableau-server-backup-script.cmd -n <filename> -u <username> -p <password> -d <days> -o <true/false>`  
 
 `Required parameters (use in sequence):`  
- 		`-n,--name 			Name of the backup file (no spaces, periods or funny characters)`  
- 		`-u,--username 		TSM administrator username`  
- 		`-p,--password 		TSM administrator password`  
- 		`-d,--days 			Delete backup files in the backup location older than N days`  
- 		`-o,--overwrite 		Overwrite any existing backup with the same name (takes appended date into account)`  
- 		`-h,--help 			Show this help`  
+ 		`-n,--name         Name of the backup file (no spaces, periods or funny characters)`  
+ 		`-u,--username        TSM administrator username`  
+ 		`-p,--password        TSM administrator password`  
+ 		`-d,--days         Delete backup files in the backup location older than N days`  
+ 		`-o,--overwrite        Overwrite any existing backup with the same name (takes appended date into account)`  
+ 		`-h,--help         Show this help`  
 
 ## Linux version
 
