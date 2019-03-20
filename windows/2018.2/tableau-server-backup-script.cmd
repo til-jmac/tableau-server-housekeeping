@@ -178,7 +178,7 @@ IF %ERRORLEVEL% GTR 0 (
 
 :show_help
 ECHO Usage: 
-ECHO tableau-server-backup-script.cmd -n ^<filename^> -u ^<USER^> -p ^<PASSWORD^> -d ^<Delete files older than N days^> -o ^<true/false^>
+ECHO tableau-server-backup-script.cmd -n ^<filename^> -u ^<username^> -p ^<password^> -d ^<days^> -o ^<true/false^>
 ECHO Required parameters (use in sequence):
 ECHO 		-n,--name 		Name of the backup file (no spaces, periods or funny characters)
 ECHO 		-u,--username 		TSM administrator username

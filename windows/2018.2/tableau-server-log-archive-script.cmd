@@ -120,7 +120,7 @@ IF %ERRORLEVEL% GTR 0 (
 
 :show_help
 ECHO Usage: 
-ECHO tableau-server-log-archive-script.cmd -u ^<USER^> -p ^<PASSWORD^> -d ^<Delete files older than N days^>
+ECHO tableau-server-log-archive-script.cmd -u ^<username^> -p ^<password^> -d ^<days^>
 ECHO Global parameters (use in sequence):
 ECHO 		-u,--username 		TSM administrator username
 ECHO 		-p,--password 		TSM administrator password 

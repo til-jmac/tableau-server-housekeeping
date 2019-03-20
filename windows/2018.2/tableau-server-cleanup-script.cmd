@@ -81,7 +81,7 @@ IF %ERRORLEVEL% GTR 0 (
 
 :show_help
 ECHO Usage: 
-ECHO tableau-server-cleanup-script.cmd -u ^<USER^> -p ^<PASSWORD^>
+ECHO tableau-server-cleanup-script.cmd -u ^<username^> -p ^<password^>
 ECHO Global parameters (use in sequence):
 ECHO 		-u,--username 		TSM administrator username
 ECHO 		-p,--password 		TSM administrator password 
