@@ -9,6 +9,7 @@ The Linux version currently performs a backup, log archive, and cleanup all in o
 These are divided into pre-2018.2 and post-2018.2 sections. 
 
 **Pre-2018.28** these scripts require modification to match your environment. Open these in a text editor and edit the variables as needed.
+
 **Post-2018.2** these scripts require you to input parameters at the command line, see below for example help, or run your chosen script with the '-h' parameter:
 
 Usage: 
