@@ -5,17 +5,21 @@
 # 	HOW TO USE THIS SCRIPT:
 # 		Run the setup script to fetch the script and install it in your system correctly 
 #
-#		Execute the script as the tsm admin user to test it works correctly in your environment
-#			sudo su -l $tsmuser -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh 'tsmusername' 'tsmpassword'
+#		Test that the script works in your environment by running it manually
+#			You must execute the script as a user that is a member of the tsmadmin group
+#			sudo su -l <tsmusername> -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh <tsmusername> <tsmpassword>
 #
 #		NOTE you have to add your tsm username and password at the end of the command to execute the script. 
-#		This avoids you having to hardcode credentials into the script itself
+#			This avoids you having to hardcode credentials into the script itself
 #
-#		Schedule it using cron to run on a regular basis
+#		*UPDATE* starting in 2019.2 the above requirement to include credentials will no longer be necessary,
+# 			provided the user executing the script is a member of the tsmadmin group  
+#
+#		Schedule the script using cron to run on a regular basis
 #			sudo su -l $tsmuser -c "crontab -e"
 #		
 #		For example, to schedule it to run once a day at 01:00, add this to your crontab
-#			0 1 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping-linux.sh > /home/$tsmuser/tableau-server-housekeeping.log
+#			0 1 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping-linux.sh > /home/<tsmuser>/tableau-server-housekeeping.log
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
@@ -47,9 +51,14 @@ log_name="logs"
 
 # Get tsm username from command line
 tsmuser=$1
+
 # Get tsm password from command line
 tsmpassword=$2 
 
+# Load the Tableau Server environment variables into the cron environment
+source /etc/profile.d/tableau_server.sh
+
+# In case that doesn't work then this might do it 
 load_environment_file() {
   if [[ -f /etc/opt/tableau/tableau_server/environment.bash ]]; then
     source /etc/opt/tableau/tableau_server/environment.bash
@@ -57,16 +66,11 @@ load_environment_file() {
   fi
 }
 
-source /etc/profile.d/tableau_server.sh
-
 # LOGS SECTION
 
 # get the path to the log archive folder
 log_path=$(tsm configuration get -k basefilepath.log_archive -u $tsmuser -p $tsmpassword)
 echo $TIMESTAMP "The path for storing log archives is $log_path" 
-
-#go to logs path
-#cd $log_path
 
 # count the number of log files eligible for deletion and output 
 echo $TIMESTAMP "Cleaning up old log files..."
@@ -98,10 +102,7 @@ fi
 backup_path=$(tsm configuration get -k basefilepath.backuprestore -u $tsmuser -p $tsmpassword)
 echo $TIMESTAMP "The path for storing backups is $backup_path" 
 
-# go to the backup path
-# cd $backup_path
-
-# count the number of log files eligible for deletion and output 
+# count the number of backup files eligible for deletion and output 
 echo $TIMESTAMP "Cleaning up old backups..."
 lines=$(find $backup_path -type f -name '*.tsbak' -mtime +$backup_days | wc -l)
 if [ $lines -eq 0 ]; then 
