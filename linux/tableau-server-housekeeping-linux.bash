@@ -3,17 +3,7 @@
 #Originally created by Jonathan MacDonald @ The Information Lab
 
 # 	HOW TO USE THIS SCRIPT:
-#		Create a new directory called scripts in your Tableau server directory 
-#			mkdir /var/opt/tableau/tableau_server/scripts
-#
-#		Copy this file to your server into the above folder
-#			cp tableau-server-housekeeping.sh /var/opt/tableau/tableau_server/scripts/
-#
-#		Change ownership of this directory and its contents to user:tableau and group:tableau
-#			sudo chown -R tableau:tableau /var/opt/tableau/tableau_server/scripts/
-#
-#		Make the script executable
-#			sudo chmod +x /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh
+# 		Run the setup script to fetch the script and install it in your system correctly 
 #
 #		Execute the script as the tsm admin user to test it works correctly in your environment
 #			sudo su -l $tsmuser -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh 'tsmusername' 'tsmpassword'
