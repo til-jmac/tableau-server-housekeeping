@@ -166,6 +166,11 @@ FORFILES -p "%backuppath%" -s -m *.tsbak /D -%backupdays% /C "cmd /c del @path" 
 ECHO %date% %time% : Backing up Tableau Server data
 CALL tsm maintenance backup -f %filename% -d -u %tsmadmin% -p %tsmpassword%
 
+:: Then we backup the settings config file
+:settings_bakup
+CALL tsm settings export -f %filename%-settings.json -u %tsmadmin% -p %tsmpassword% 
+::%filename% -d -u %tsmadmin% -p %tsmpassword%
+
 :end_msg
 IF %ERRORLEVEL% EQU 0 (
 	ECHO %date% %time% : Backup completed succesfully. 
