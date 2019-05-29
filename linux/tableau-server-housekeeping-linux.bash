@@ -102,6 +102,16 @@ fi
 
 # END OF LOGS SECTION
 
+
+# CLEANUP SECTION
+
+# cleanup old logs and temp files 
+echo $TIMESTAMP "Cleaning up Tableau Server..."
+tsm maintenance cleanup -a $tsmparams
+
+# END OF CLEANUP SECTION
+
+
 # BACKUP SECTION
 
 # get the path to the backups folder
@@ -133,16 +143,13 @@ fi
 
 # END OF BACKUP SECTION
 
-# CLEANUP AND RESTART SECTION
+# RESTART SECTION
 
-# cleanup old logs and temp files 
-echo $TIMESTAMP "Cleaning up Tableau Server..."
-tsm maintenance cleanup -a $tsmparams
 # restart the server (optional, uncomment to run)
 	#echo "Restarting Tableau Server"
 	#tsm restart $tsmparams
 
-# END OF CLEANUP AND RESTART SECTION
+# END OF RESTART SECTION
 
 # END OF SCRIPT
 echo $TIMESTAMP "Housekeeping completed"
