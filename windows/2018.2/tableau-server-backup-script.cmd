@@ -127,7 +127,7 @@ IF %overwrite_requested% == true GOTO overwrite
 :overwrite
 ECHO %date% %time% : Overwrite was requested. Cleaning out any existing file with the same name
 IF EXIST "%backuppath%\%filename%-%mydate%.tsbak" DEL /F "%backuppath%\%filename%-%mydate%.tsbak" >nul 2>&1
-GOTO bakup
+GOTO set_backup_dir
 
 :: It wasn't used so let's just go ahead and backup
 :no_overwrite
@@ -164,11 +164,11 @@ FORFILES -p "%backuppath%" -s -m *.tsbak /D -%backupdays% /C "cmd /c del @path" 
 :: Then we take the backup
 :bakup
 ECHO %date% %time% : Backing up Tableau Server data
-CALL tsm maintenance backup -f %filename% -d -u %tsmadmin% -p %tsmpassword%
+CALL tsm maintenance backup -f "%filename%" -d -u %tsmadmin% -p %tsmpassword%
 
 :: Then we backup the settings config file
 :settings_bakup
-CALL tsm settings export -f %filename%-settings.json -u %tsmadmin% -p %tsmpassword% 
+CALL tsm settings export -f "%backuppath%\%filename%-settings.json" -u %tsmadmin% -p %tsmpassword% 
 ::%filename% -d -u %tsmadmin% -p %tsmpassword%
 
 :end_msg
