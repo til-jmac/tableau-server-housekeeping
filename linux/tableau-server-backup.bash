@@ -68,24 +68,22 @@ echo $TIMESTAMP "The path for storing backups is $backup_path"
 
 # count the number of backup files eligible for deletion and output 
 echo $TIMESTAMP "Cleaning up old backups..."
-lines=$(find $backup_path -type f -name '*.tsbak' -mtime +$backup_days | wc -l)
+lines=$(find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days | wc -l)
 if [ $lines -eq 0 ]; then 
 	echo $TIMESTAMP $lines old backups found, skipping...
-	else $TIMESTAMP $lines old backups found, deleting...
+	else echo  $TIMESTAMP $lines old backups found, deleting...
 		#remove backup files older than N days
-		find $backup_path -type f -name '*.tsbak' -mtime +$backup_days -exec rm {} \;
+		find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm {} \;
 fi
 
 #export current settings
 echo $TIMESTAMP "Exporting current settings..."
-tsm settings export -f $backup_path/settings.json $tsmparams
-
+tsm settings export -f $backup_path/settings-$DATE.json $tsmparams
 #create current backup
 echo $TIMESTAMP "Backup up Tableau Server data..."
 tsm maintenance backup -f $backup_name -d $tsmparams
-
 #copy backups to different location (optional)
-if [ "$copybackup" == "yes" ];
+if [ "$copy_backup" == "yes" ];
 	then
 	echo $TIMESTAMP "Copying backup and settings to remote share"
 	cp $backup_path/* $external_backup_path/
