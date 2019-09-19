@@ -2,7 +2,7 @@
 
 # Must be run as root
 [ ${EUID} -ne 0 ] && {
-    errcho "This script must be run as root. Canceling."
+    echo "This script must be run as root. Canceling."
     exit 1
   }
 
