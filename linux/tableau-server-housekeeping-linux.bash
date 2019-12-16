@@ -88,7 +88,7 @@ fi
 echo $TIMESTAMP "Archiving current logs..."
 tsm maintenance ziplogs -a -t -o -f logs-$DATE.zip -u $tsmuser -p $tsmpassword
 #copy logs to different location (optional)
-if [ "$copylogs" == "yes" ];
+if [ "$copy_logs" == "yes" ];
 	then
 	echo $TIMESTAMP "Copying logs to remote share"
 	cp $log_path/$log_name-$DATE $external_log_path/ 
@@ -119,7 +119,7 @@ tsm settings export -f $backup_path/settings.json -u $tsmuser -p $tsmpassword
 echo $TIMESTAMP "Backup up Tableau Server data..."
 tsm maintenance backup -f $backup_name -d -u $tsmuser -p $tsmpassword
 #copy backups to different location (optional)
-if [ "$copybackup" == "yes" ];
+if [ "$copy_backup" == "yes" ];
 	then
 	echo $TIMESTAMP "Copying backup and settings to remote share"
 	cp $backup_path/* $external_backup_path/
