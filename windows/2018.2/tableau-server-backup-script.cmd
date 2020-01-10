@@ -1,7 +1,7 @@
 :: THE INFORMATION LAB BACKUP SCRIPT
 :: https://github.com/til-jmac/tableau-server-housekeeping
 :: Authored by Jonathan MacDonald
-:: Last updated 27/08/2018
+:: Last updated 17/06/2019
 :: How to use this script
 :: 1) Create a scripts directory somewhere that makes sense for this (and other) scripts to be kept. Inside your Tableau Server 'data' folder is a good place. 
 :: 2) The command line parameters are ALL required. Ensure you use them in the correct order or the script will fail

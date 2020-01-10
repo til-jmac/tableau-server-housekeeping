@@ -1,7 +1,7 @@
 :: THE INFORMATION LAB CLEANUP SCRIPT
 :: https://github.com/til-jmac/tableau-server-housekeeping
 :: Authored by Jonathan MacDonald
-:: Last updated 27/08/2018
+:: Last updated 17/06/2019
 :: How to use this script
 :: By default, Tableau Server does not automatically archive/delete its log files. 
 :: So a process is required to firstly archive old log files, then clean up the current logs to free up disk space. 
