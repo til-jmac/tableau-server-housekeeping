@@ -67,7 +67,7 @@ IF "%tsmpassword%" == "" (
 :: Then we archive the logs
 :cleanup
 ECHO %date% %time% : Cleaning up Tableau Server log and temp files
-CALL tsm maintenance cleanup -l  -t -v -u %tsmadmin% -p %tsmpassword%
+CALL tsm maintenance cleanup -l  -t -u %tsmadmin% -p %tsmpassword%
 
 :end_msg
 IF %ERRORLEVEL% EQU 0 (
