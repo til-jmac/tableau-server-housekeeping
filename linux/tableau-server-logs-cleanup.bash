@@ -42,12 +42,6 @@ log_name="logs"
 
 # LOAD ENVIRONMENT & USER INPUT
 
-# Get tsm username from command line
-tsmuser=$1
-
-# Get tsm password from command line
-tsmpassword=$2 
-
 # Load the Tableau Server environment variables into the cron environment
 source /etc/profile.d/tableau_server.sh
 
@@ -59,10 +53,21 @@ load_environment_file() {
   fi
 }
 
+if [ "$#" -eq 2 ] ; then
+	# Get tsm username from command line input
+	tsmuser="$1"
+	# Get tsm password from command line input
+	tsmpassword="$2" 
+	tsmparams="-u $tsmuser -p $tsmpassword"
+elif [ $(echo $TABLEAU_SERVER_DATA_DIR_VERSION | cut -d. -f1) -ge 20192 ]  && (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]) ; then 
+	# 2019.2 workflow. If running as tsmadmin member or root, do not set userinfo
+	declare tsmparams
+fi
+
 # LOGS SECTION
 
 # get the path to the log archive folder
-log_path=$(tsm configuration get -k basefilepath.log_archive -u $tsmuser -p $tsmpassword)
+log_path=$(tsm configuration get -k basefilepath.log_archive $tsmparams)
 echo $TIMESTAMP "The path for storing log archives is $log_path" 
 
 # count the number of log files eligible for deletion and output 
@@ -79,7 +84,7 @@ fi
 
 #archive current logs 
 echo $TIMESTAMP "Archiving current logs..."
-tsm maintenance ziplogs -a -t -o -f logs-$DATE.zip -u $tsmuser -p $tsmpassword
+tsm maintenance ziplogs -a -t -o -f logs-$DATE.zip $tsmparams
 #copy logs to different location (optional)
 if [ "$copylogs" == "yes" ];
 	then
@@ -93,10 +98,10 @@ fi
 
 # cleanup old logs and temp files 
 echo $TIMESTAMP "Cleaning up Tableau Server..."
-tsm maintenance cleanup -a -u $tsmuser -p $tsmpassword
+tsm maintenance cleanup -a $tsmparams
 # restart the server (optional, uncomment to run)
 	#echo "Restarting Tableau Server"
-	#tsm restart -u $tsmuser -p $tsmpassword
+	#tsm restart $tsmparams
 
 # END OF CLEANUP AND RESTART SECTION
 

@@ -34,11 +34,6 @@ external_backup_path="/tmp/backups/"
 backup_days="7"
 # What do you want to name your backup files? (will automatically append current date to this filename)
 backup_name="tableau-server-backup"
-# Get tsm username from command line input
-tsmuser=$1
-# Get tsm password from command line input
-tsmpassword=$2 
-
 # END OF VARIABLES SECTION
 
 # LOAD ENVIRONMENT & USER INPUT
@@ -54,30 +49,39 @@ load_environment_file() {
   fi
 }
 
+if [ "$#" -eq 2 ] ; then
+	# Get tsm username from command line input
+	tsmuser="$1"
+	# Get tsm password from command line input
+	tsmpassword="$2" 
+	tsmparams="-u $tsmuser -p $tsmpassword"
+elif [ $(echo $TABLEAU_SERVER_DATA_DIR_VERSION | cut -d. -f1) -ge 20192 ]  && (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]) ; then 
+	# 2019.2 workflow. If running as tsmadmin member or root, do not set userinfo
+	declare tsmparams
+fi
+
 # BACKUP SECTION
 
 # get the path to the backups folder
-backup_path=$(tsm configuration get -k basefilepath.backuprestore -u $tsmuser -p $tsmpassword)
+backup_path=$(tsm configuration get -k basefilepath.backuprestore $tsmparams)
 echo $TIMESTAMP "The path for storing backups is $backup_path" 
 
 # count the number of backup files eligible for deletion and output 
 echo $TIMESTAMP "Cleaning up old backups..."
-lines=$(find $backup_path -type f -name '*.tsbak' -mtime +$backup_days | wc -l)
+lines=$(find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days | wc -l)
 if [ $lines -eq 0 ]; then 
 	echo $TIMESTAMP $lines old backups found, skipping...
-	else $TIMESTAMP $lines old backups found, deleting...
+	else echo  $TIMESTAMP $lines old backups found, deleting...
 		#remove backup files older than N days
-		find $backup_path -type f -name '*.tsbak' -mtime +$backup_days -exec rm {} \;
+		find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm {} \;
 fi
 
 #export current settings
 echo $TIMESTAMP "Exporting current settings..."
-tsm settings export -f $backup_path/settings.json -u $tsmuser -p $tsmpassword
-
+tsm settings export -f $backup_path/settings-$DATE.json $tsmparams
 #create current backup
 echo $TIMESTAMP "Backup up Tableau Server data..."
-tsm maintenance backup -f $backup_name -d -u $tsmuser -p $tsmpassword
-
+tsm maintenance backup -f $backup_name -d $tsmparams
 #copy backups to different location (optional)
 if [ "$copy_backup" == "yes" ];
 	then
