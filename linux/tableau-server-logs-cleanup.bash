@@ -84,7 +84,7 @@ fi
 
 #archive current logs 
 echo $TIMESTAMP "Archiving current logs..."
-tsm maintenance ziplogs -a -t -o -f logs-$DATE.zip $tsmparams
+tsm maintenance ziplogs -t -o -f logs-$DATE.zip $tsmparams
 #copy logs to different location (optional)
 if [ "$copylogs" == "yes" ];
 	then
