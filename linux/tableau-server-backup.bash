@@ -25,7 +25,7 @@
 # Set some variables - you should change these to match your own environment
 
 # Set the date how we want it
-DATE=`date '%d-%m-%y'`
+DATE=`date '+%d-%m-%Y'`
 # Grab the current datetime for timestamping the log entries
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 # Do you want to copy your backups to another location after completion?
