@@ -1,7 +1,7 @@
 :: THE INFORMATION LAB BACKUP SCRIPT
 :: https://github.com/til-jmac/tableau-server-housekeeping
 :: Authored by Jonathan MacDonald
-:: Last updated 17/06/2019
+:: Last updated 14/08/2020
 :: How to use this script
 :: 1) Create a scripts directory somewhere that makes sense for this (and other) scripts to be kept. Inside your Tableau Server 'data' folder is a good place. 
 :: 2) The command line parameters are ALL required. Ensure you use them in the correct order or the script will fail
@@ -111,7 +111,7 @@ ECHO %date% %time% : Overwrite was not requested, proceeding
 :: Grab the location of the backup directory
 :set_backup_dir
 ECHO %date% %time% : Getting the location of the default backup directory
-FOR /F "tokens=* USEBACKQ" %%F IN (`tsm configuration get -k basefilepath.backuprestore -u %tsmadmin% -p %tsmpassword%`) DO (SET "backuppath=%%F")
+FOR /F "tokens=* USEBACKQ" %%F IN (`tsm configuration get -k basefilepath.backuprestore`) DO (SET "backuppath=%%F")
 ECHO The default backup path is: 
 ECHO %backuppath%
 
@@ -131,6 +131,11 @@ ECHO %backuppath%
 ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
 FORFILES -p "%backuppath%" -s -m *.tsbak /D -%backupdays% /C "cmd /c del @path" 2>nul
 
+:: Do the same for settings.json files
+:delete_old_settings_files
+ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
+FORFILES -p "%backuppath%" -s -m *.json /D -%backupdays% /C "cmd /c del @path" 2>nul
+
 :: Then we take the backup
 :bakup
 ECHO %date% %time% : Backing up Tableau Server data
@@ -138,8 +143,7 @@ CALL tsm maintenance backup -f "%filename%" -d
 
 :: Then we backup the settings config file
 :settings_bakup
-CALL tsm settings export -f "%backuppath%\%filename%-settings.json"
-::%filename% -d -u %tsmadmin% -p %tsmpassword%
+CALL tsm settings export -f "%backuppath%\%filename%-settings-%mydate%.json"
 
 :end_msg
 IF %ERRORLEVEL% EQU 0 (
