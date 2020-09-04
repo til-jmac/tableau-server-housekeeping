@@ -75,7 +75,7 @@ if [ $lines -eq 0 ]; then
 	echo $TIMESTAMP $lines old backups found, skipping...
 	else echo  $TIMESTAMP $lines old backups found, deleting...
 		#remove backup files older than N days
-		find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm {} \;
+		find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm -f {} \;
 fi
 
 #export current settings
