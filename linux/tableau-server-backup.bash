@@ -7,7 +7,7 @@
 #
 #		Test that the script works in your environment by running it manually
 #			You must execute the script as a user that is a member of the tsmadmin group
-#			sudo su -l <tsmusername> -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh <tsmusername> <tsmpassword>
+#			sudo su -l <tsmusername> -c /var/opt/tableau/tableau_server/scripts/tableau-server-backup.bash <tsmusername> <tsmpassword>
 #
 #		NOTE you have to add your tsm username and password at the end of the command to execute the script. 
 #			This avoids you having to hardcode credentials into the script itself
@@ -19,7 +19,7 @@
 #			sudo su -l $tsmuser -c "crontab -e"
 #		
 #		For example, to schedule it to run once a day at 01:00, add this to your crontab
-#			0 1 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping-linux.sh > /home/<tsmuser>/tableau-server-housekeeping.log
+#			0 1 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-backup.bash > /home/<tsmuser>/tableau-server-backup.log
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
