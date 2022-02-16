@@ -68,26 +68,30 @@ fi
 
 # get the path to the log archive folder
 log_path=$(tsm configuration get -k basefilepath.log_archive $tsmparams)
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "The path for storing log archives is $log_path" 
 
 # count the number of log files eligible for deletion and output 
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up old log files..."
 lines=$(find $log_path -type f -name '*.zip' -mtime +$log_days | wc -l)
 if [ $lines -eq 0 ]; then 
-	echo $TIMESTAMP $lines found, skipping...
-	
-	else $TIMESTAMP $lines found, deleting...
-		#remove log archives older than the specified number of days
-		find $log_path -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
+	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+	echo $TIMESTAMP $lines found, skipping...	
+else $TIMESTAMP $lines found, deleting...
+	#remove log archives older than the specified number of days
+	find $log_path -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
+	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Cleaning up completed."		
 fi
 
 #archive current logs 
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Archiving current logs..."
 tsm maintenance ziplogs -t -o -f logs-$DATE.zip $tsmparams
 #copy logs to different location (optional)
-if [ "$copylogs" == "yes" ];
-	then
+if [ "$copylogs" == "yes" ]; then
+	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Copying logs to remote share"
 	cp $log_path/$log_name-$DATE $external_log_path/ 
 fi
@@ -97,6 +101,7 @@ fi
 # CLEANUP AND RESTART SECTION
 
 # cleanup old logs and temp files 
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up Tableau Server..."
 tsm maintenance cleanup -a $tsmparams
 # restart the server (optional, uncomment to run)
@@ -106,4 +111,5 @@ tsm maintenance cleanup -a $tsmparams
 # END OF CLEANUP AND RESTART SECTION
 
 # END OF SCRIPT
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Housekeeping completed"
