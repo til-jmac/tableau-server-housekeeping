@@ -19,7 +19,7 @@
 #			sudo su -l $tsmuser -c "crontab -e"
 #		
 #		For example, to schedule it to run once a day at 01:00, add this to your crontab
-#			0 1 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping-linux.sh > /home/<tsmuser>/tableau-server-housekeeping.log
+#			0 1 * * * /var/opt/tableau/tableau_server/scripts/<SCRIPT_FILE_NAME_HERE> > /home/<TSM_USER>/tableau-server-housekeeping.log
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
@@ -73,22 +73,55 @@ echo $TIMESTAMP "Cleaning up old backups..."
 lines=$(find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days | wc -l)
 if [ $lines -eq 0 ]; then 
 	echo $TIMESTAMP $lines old backups found, skipping...
+	# ADD CHECK FOR ONLY ONE BACKUP - DO NOT DELETE IN THAT CASE?
 	else echo  $TIMESTAMP $lines old backups found, deleting...
 		#remove backup files older than N days
 		find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm -f {} \;
+		if [ $? -eq 0 ]
+			then
+  			echo "$TIMESTAMP $lines backups successfully deleted"
+  		exit 0
+			else
+  			echo "$TIMESTAMP $lines backups failed to delete, halting script." >&2
+  		exit 1
+		fi
 fi
 
 #export current settings
 echo $TIMESTAMP "Exporting current settings..."
 tsm settings export -f $backup_path/settings-$DATE.json $tsmparams
+if [ $? -eq 0 ]
+then
+  echo "$TIMESTAMP settings exported successfully"
+  exit 0
+else
+  echo "$TIMESTAMP settings export failed, halting script." >&2
+  exit 1
+fi
 #create current backup
 echo $TIMESTAMP "Backup up Tableau Server data..."
 tsm maintenance backup -f $backup_name -d $tsmparams
+if [ $? -eq 0 ]
+then
+  echo "$TIMESTAMP Local backup created successfully"
+  exit 0
+else
+  echo "$TIMESTAMP Local backup creation failed, halting script." >&2
+  exit 1
+fi
 #copy backups to different location (optional)
 if [ "$copy_backup" == "yes" ];
 	then
 	echo $TIMESTAMP "Copying backup and settings to remote share"
 	cp $backup_path/* $external_backup_path/
+	if [ $? -eq 0 ]
+		then
+  		echo "Backup copied successfully"
+  	exit 0
+		else
+  		echo "Backup copy failed, halting script." >&2
+  	exit 1
+fi
 fi
 
 # END OF BACKUP SECTION
