@@ -76,26 +76,32 @@ fi
 
 # get the path to the log archive folder
 log_path=$(tsm configuration get -k basefilepath.log_archive $tsmparams)
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "The path for storing log archives is $log_path" 
 
 # count the number of log files eligible for deletion and output 
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up old log files..."
 lines=$(find $log_path -type f -name '*.zip' -mtime +$log_days | wc -l)
 if [ $lines -eq 0 ]; then 
-	echo $TIMESTAMP $lines found, skipping...
-	
-	else echo $TIMESTAMP $lines found, deleting...
-		#remove log archives older than the specified number of days
-		find $log_path -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
+	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+	echo $TIMESTAMP $lines found, skipping...	
+else 
+	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+	echo $TIMESTAMP $lines found, deleting...
+	#remove log archives older than the specified number of days
+	find $log_path -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
+	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Cleaning up completed."		
 fi
 
 #archive current logs 
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Archiving current logs..."
 tsm maintenance ziplogs -a -t -o -f logs-$DATE.zip $tsmparams
 #copy logs to different location (optional)
-if [ "$copy_logs" == "yes" ];
-	then
+if [ "$copy_logs" == "yes" ]; then
+	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Copying logs to remote share"
 	cp $log_path/$log_name-$DATE $external_log_path/ 
 fi
@@ -106,6 +112,7 @@ fi
 # CLEANUP SECTION
 
 # cleanup old logs and temp files 
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up Tableau Server..."
 tsm maintenance cleanup -a $tsmparams
 
@@ -116,27 +123,33 @@ tsm maintenance cleanup -a $tsmparams
 
 # get the path to the backups folder
 backup_path=$(tsm configuration get -k basefilepath.backuprestore $tsmparams)
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "The path for storing backups is $backup_path" 
 
 # count the number of backup files eligible for deletion and output 
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up old backups..."
 lines=$(find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days | wc -l)
 if [ $lines -eq 0 ]; then 
+	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP $lines old backups found, skipping...
-	else echo  $TIMESTAMP $lines old backups found, deleting...
-		#remove backup files older than N days
-		find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm {} \;
+else 
+	echo  $TIMESTAMP $lines old backups found, deleting...
+	#remove backup files older than N days
+	find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm {} \;
 fi
 
 #export current settings
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Exporting current settings..."
 tsm settings export -f $backup_path/settings-$DATE.json $tsmparams
 #create current backup
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Backup up Tableau Server data..."
 tsm maintenance backup -f $backup_name -d $tsmparams
 #copy backups to different location (optional)
-if [ "$copy_backup" == "yes" ];
-	then
+if [ "$copy_backup" == "yes" ]; then
+	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Copying backup and settings to remote share"
 	cp $backup_path/* $external_backup_path/
 fi
@@ -152,4 +165,5 @@ fi
 # END OF RESTART SECTION
 
 # END OF SCRIPT
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Housekeeping completed"
