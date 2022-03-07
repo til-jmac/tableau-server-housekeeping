@@ -76,7 +76,8 @@ lines=$(find $log_path -type f -name '*.zip' -mtime +$log_days | wc -l)
 if [ $lines -eq 0 ]; then 
 	echo $TIMESTAMP $lines found, skipping...
 	
-	else $TIMESTAMP $lines found, deleting...
+else 
+	echo $TIMESTAMP $lines found, deleting...
 		#remove log archives older than the specified number of days
 		find $log_path -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
 	echo $TIMESTAMP "Cleaning up completed."		
