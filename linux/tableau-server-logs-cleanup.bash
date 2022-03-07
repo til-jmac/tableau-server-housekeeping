@@ -20,7 +20,7 @@
 #			sudo su -l $tsmuser -c "crontab -e"
 #		
 #		For example, to schedule it to run once a day at 01:00, add this to your crontab
-#			0 1 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping-linux.sh > /home/<tsmuser>/tableau-server-housekeeping.log
+#			0 1 * * * /var/opt/tableau/tableau_server/scripts/<SCRIPT_FILE_NAME_HERE> > /home/<TSM_USER>/tableau-server-housekeeping.log
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
