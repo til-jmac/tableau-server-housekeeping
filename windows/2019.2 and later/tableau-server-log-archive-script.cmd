@@ -76,7 +76,7 @@ FORFILES -p "%archivepath%" -s -m *.zip /D -%archivedays% /C "cmd /c del @path" 
 :: Then we archive the logs
 :archive
 ECHO %date% %time% : Archiving Tableau Server log files
-CALL tsm maintenance ziplogs -mi -t -o -f logs-%mydate%
+CALL tsm maintenance ziplogs -a -o -f logs-%mydate%
 
 :end_msg
 IF %ERRORLEVEL% EQU 0 (
