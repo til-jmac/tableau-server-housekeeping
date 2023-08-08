@@ -33,7 +33,7 @@ copy_backup="no"
 # If yes to above, where do you want to copy them? 
 external_backup_path="/tmp/backups/"
 # How many days do you want to keep old backup files for? 
-backup_days="7"
+backup_days="2"
 # What do you want to name your backup files? (will automatically append current date to this filename)
 backup_name="tableau-server-backup"
 # END OF VARIABLES SECTION
