@@ -98,6 +98,6 @@ fi
 
 # END OF BACKUP SECTION
 
-# END OF SCRIP
+# END OF SCRIPT
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Backup completed"
