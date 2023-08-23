@@ -70,8 +70,9 @@ backup_path=$(tsm configuration get -k basefilepath.backuprestore $tsmparams)
 # If tsm command output is not as expected, raise an error and exit the script
 RESULT=$?
 if [ $RESULT -ne 0 ]; then
-        echo "Something is not correct with tsm command and the output is not as expected!"
-        echo "Backup process didn't start because of an error. Exiting ..."
+        echo "Something is wrong with tsm command!"
+        echo "Error in setting backup_path:" $backup_path
+        echo "Backup process did not start. Exiting..."
         exit $RESULT
 fi
 
