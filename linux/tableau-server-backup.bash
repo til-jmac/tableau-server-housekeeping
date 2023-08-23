@@ -66,6 +66,16 @@ fi
 
 # get the path to the backups folder
 backup_path=$(tsm configuration get -k basefilepath.backuprestore $tsmparams)
+
+# If tsm command output is not as expected, raise an error and exit the script
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
+        echo "Something is wrong with tsm command!"
+        echo "Error in setting backup_path:" $backup_path
+        echo "Backup process did not start. Exiting..."
+        exit $RESULT
+fi
+
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "The path for storing backups is $backup_path" 
 
