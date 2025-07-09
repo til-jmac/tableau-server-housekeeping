@@ -1,38 +1,214 @@
 # Housekeeping scripts for Tableau Server
-* Windows and Linux versions
-* Customise these scripts for your environment by editing the variables at the top of each script OR making use of the command line parameters where offered. 
-* Automate running them in cron (Linux) or Task Scheduler (Windows), or whatever enterprise job manager you use
 
-The Linux version currently performs a backup, log archive, and cleanup all in one go, while the Windows versions are split up into three separate scripts. I plan to split up the Linux version too, for ease of use. You might also want to schedule a backup every day, but a log archive/cleanup once a week, for example.
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Tableau](https://img.shields.io/badge/Tableau-2018.2%2B-orange.svg)](https://www.tableau.com/)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey.svg)](https://github.com/til-jmac/tableau-server-housekeeping)
 
-## Windows version
-These are divided into pre-2018.2 and post-2018.2 sections. 
+Robust, production-ready housekeeping scripts for Tableau Server with comprehensive error handling and TSM validation.
 
-**Pre-2018.2** these scripts require modification to match your environment. Open these in a text editor and edit the variables as needed.
+## Features
 
-**Post-2018.2** these scripts require you to input parameters at the command line, see below for example help, or run your chosen script with the '-h' parameter:
+- **Cross-platform**: Windows (CMD) and Linux (Bash) versions
+- **Comprehensive error handling**: TSM validation, detailed error messages, and specific exit codes
+- **Flexible configuration**: Command line parameters and customizable variables
+- **Production-ready**: Tested validation checks and robust error handling
+- **Easy automation**: Ready for cron (Linux) or Task Scheduler (Windows)
 
-`Usage:` 
-`tableau-server-backup-script.cmd -n <filename> -u <username> -p <password> -d <days> -o <true/false>`  
+## Available Scripts
 
-`Required parameters (use in sequence):`  
- 		`-n,--name         Name of the backup file (no spaces, periods or funny characters)`  
- 		`-u,--username        TSM administrator username`  
- 		`-p,--password        TSM administrator password`  
- 		`-d,--days         Delete backup files in the backup location older than N days`  
- 		`-o,--overwrite        Overwrite any existing backup with the same name (takes appended date into account)`  
- 		`-h,--help         Show this help`  
+### Windows Scripts (2019.2+)
+- `tableau-server-backup-script.cmd` - Creates backups and exports settings
+- `tableau-server-cleanup-script.cmd` - Cleans up logs and temporary files  
+- `tableau-server-log-archive-script.cmd` - Archives current log files
 
-## Linux version
+### Linux Scripts
+- `tableau-server-backup.bash` - Creates backups and exports settings
+- `tableau-server-housekeeping-linux.bash` - Complete housekeeping (backup, logs, cleanup)
+- `tableau-server-logs-cleanup.bash` - Archives logs and performs cleanup
 
-**Easy way** download and execute the *setup.bash* script to set up the housekeeping script on your server. This downloads the housekeeping script, installs it in a scripts folder in your Tableau Server data directory, and fixes its permissions so it's ready to run. The follow the instructions in the housekeeping script itself to schedule it in cron
+## Prerequisites
 
-**Expert way** download the housekeeping script yourself, modify and execute as needed 
+- **Tableau Server 2018.2 or later**
+- **Permissions**: User must be member of:
+  - Linux: `tsmadmin` group
+  - Windows: Local Administrators group  
+- **TSM availability**: Scripts validate TSM is installed and responsive
+- **Elevated privileges**: Scripts must run with administrator/root privileges
 
-## 2019.2 
-Starting with 2019.2, TSM will no longer require credentials provided the user executing the TSM command is a member of the tsmadmin group (Linux) or the Local Administrators group (Windows). I will be working on updating these scripts to accommodate both old and new versions. 
+## Installation
 
-###### NOTE these scripts are a work in progress and are offered with no support. Updates to Tableau software may result in these scripts breaking, and it might be a while before I get round to updating them, so please always test them first to ensure they do what you expect them to do. 
+### Windows Installation
+1. Download the appropriate scripts from the `windows/2019.2 and later/` folder
+2. Place scripts in a secure location accessible to your Tableau Server
+3. Run with elevated privileges (Administrator)
 
-Find me on [twitter](https://twitter.com/macdonaldj) if you want to feed back, or just have a chat.
+### Linux Installation
+
+**Easy way**: Use the setup script
+```bash
+wget https://raw.githubusercontent.com/til-jmac/tableau-server-housekeeping/master/linux/setup.bash
+chmod +x setup.bash
+sudo ./setup.bash
+```
+
+**Manual way**: Download scripts directly and customize as needed
+
+## Usage
+
+### Windows Scripts (2019.2+)
+
+**Backup Script:**
+```cmd
+tableau-server-backup-script.cmd -n <filename> -d <days> -o <true/false>
+```
+
+**Cleanup Script:**
+```cmd
+tableau-server-cleanup-script.cmd
+```
+
+**Log Archive Script:**
+```cmd
+tableau-server-log-archive-script.cmd -d <days>
+```
+
+**Parameters:**
+- `-n, --name`: Name of the backup file (no spaces, periods or special characters)
+- `-d, --days`: Delete files older than N days
+- `-o, --overwrite`: Overwrite existing files with same name (true/false)
+- `-h, --help`: Show help
+
+### Linux Scripts
+
+**Backup Only:**
+```bash
+sudo -u <tsm_user> /path/to/tableau-server-backup.bash
+```
+
+**Complete Housekeeping:**
+```bash
+sudo -u <tsm_user> /path/to/tableau-server-housekeeping-linux.bash
+```
+
+**Logs & Cleanup:**
+```bash
+sudo -u <tsm_user> /path/to/tableau-server-logs-cleanup.bash
+```
+
+**With credentials (pre-2019.2):**
+```bash
+sudo -u <tsm_user> /path/to/script.bash <username> <password>
+```
+
+## Error Handling & Exit Codes
+
+All scripts include comprehensive error handling with specific exit codes for troubleshooting:
+
+| Exit Code | Meaning |
+|-----------|---------|
+| 0 | Success |
+| 1 | Not running as Administrator/root |
+| 2 | TSM command not found or not accessible |
+| 3 | TSM not responsive or configuration issues |
+| 4 | TSM configuration access denied |
+| 5 | Failed to retrieve directory paths |
+| 6 | Archive/Settings export operation failed |
+| 7 | Backup/Cleanup operation failed |
+
+## TSM Validation
+
+Scripts automatically validate:
+- TSM command availability
+- TSM service responsiveness  
+- TSM configuration access
+- Required directory paths
+- Proper permissions
+
+## Troubleshooting
+
+### Common Issues
+
+**"TSM command not found"**
+- Ensure Tableau Server is installed
+- Check TSM is in system PATH
+- Verify running as correct user
+
+**"Cannot access TSM configuration"**
+- Check user is member of tsmadmin group (Linux) or Local Administrators (Windows)
+- Verify TSM service is running
+- Check Tableau Server status
+
+**"Permission denied"**
+- Run scripts with elevated privileges
+- Verify file permissions on script files
+- Check directory permissions for backup/log paths
+
+### Testing Scripts
+
+Always test scripts in a development environment first:
+
+```bash
+# Test mode - check what would happen
+./script.bash --dry-run  # (if supported)
+
+# Check TSM access
+tsm version
+tsm status
+
+# Verify permissions
+id -nG  # Linux - should show tsmadmin group
+```
+
+## Automation
+
+### Windows Task Scheduler
+Create scheduled tasks to run scripts automatically:
+
+```cmd
+schtasks /create /tn "Tableau Backup" /tr "C:\path\to\tableau-server-backup-script.cmd -n daily-backup -d 7 -o false" /sc daily /st 02:00
+```
+
+### Linux Cron
+Add to crontab for automatic execution:
+
+```bash
+# Daily backup at 2 AM
+0 2 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-backup.bash >> /var/log/tableau-backup.log 2>&1
+
+# Weekly cleanup on Sunday at 3 AM  
+0 3 * * 0 /var/opt/tableau/tableau_server/scripts/tableau-server-logs-cleanup.bash >> /var/log/tableau-cleanup.log 2>&1
+```
+
+## Security Considerations
+
+- Store scripts in secure locations with appropriate permissions
+- Use service accounts with minimal required privileges
+- Regularly review and update retention policies
+- Monitor script execution logs for security events
+- Consider encrypting backup destinations
+
+## Version Compatibility
+
+| Tableau Server Version | Script Version | Notes |
+|-------------------------|----------------|-------|
+| 2018.2 - 2019.1 | `windows/2018.2 to 2019.1/` | Requires username/password |
+| 2019.2+ | `windows/2019.2 and later/` | No credentials required |
+| All Linux versions | `linux/` | Auto-detects version |
+
+## Contributing
+
+These scripts are actively maintained and tested. Please:
+- Test thoroughly in development environments
+- Report issues via GitHub Issues
+- Submit pull requests for improvements
+
+## Support
+
+For questions or feedback:
+- **Email**: support@theinformationlab.co.uk
+- **GitHub Issues**: [Create an issue](https://github.com/til-jmac/tableau-server-housekeeping/issues) for bug reports or feature requests
+
+## License
+
+MIT License - See LICENSE file for details.
 
