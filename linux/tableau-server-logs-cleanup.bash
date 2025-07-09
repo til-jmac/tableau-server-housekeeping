@@ -53,6 +53,35 @@ load_environment_file() {
   fi
 }
 
+# Call the environment loading function
+load_environment_file
+
+# Function to check TSM availability and configuration
+check_tsm_prerequisites() {
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "Checking TSM availability..."
+  
+  # Check if TSM is available
+  if ! command -v tsm &> /dev/null; then
+    echo $TIMESTAMP "ERROR: TSM command not found. Please ensure Tableau Server is installed and TSM is in PATH."
+    exit 2
+  fi
+  
+  # Check TSM version
+  if ! tsm version &> /dev/null; then
+    echo $TIMESTAMP "ERROR: TSM is not responsive. Please check Tableau Server status."
+    exit 3
+  fi
+  
+  # Check if we can access TSM configuration
+  if ! tsm configuration get -k basefilepath.log_archive $tsmparams &> /dev/null; then
+    echo $TIMESTAMP "ERROR: Cannot access TSM configuration. Please check TSM permissions."
+    exit 4
+  fi
+  
+  echo $TIMESTAMP "TSM validation completed successfully."
+}
+
 if [ "$#" -eq 2 ] ; then
 	# Get tsm username from command line input
 	tsmuser="$1"
@@ -64,23 +93,31 @@ elif [ $(echo $TABLEAU_SERVER_DATA_DIR_VERSION | cut -d. -f1) -ge 20192 ]  && (i
 	declare tsmparams
 fi
 
+# Run TSM validation
+check_tsm_prerequisites
+
 # LOGS SECTION
 
 # get the path to the log archive folder
 log_path=$(tsm configuration get -k basefilepath.log_archive $tsmparams)
+if [ $? -ne 0 ] || [ -z "$log_path" ]; then
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "ERROR: Failed to retrieve log archive path from TSM configuration."
+  exit 5
+fi
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "The path for storing log archives is $log_path" 
 
 # count the number of log files eligible for deletion and output 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up old log files..."
-lines=$(find $log_path -type f -name '*.zip' -mtime +$log_days | wc -l)
+lines=$(find "$log_path" -type f -name '*.zip' -mtime +$log_days | wc -l)
 if [ $lines -eq 0 ]; then 
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP $lines found, skipping...	
 else echo $TIMESTAMP $lines found, deleting...
 	#remove log archives older than the specified number of days
-	find $log_path -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
+	find "$log_path" -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Cleaning up completed."		
 fi
@@ -89,11 +126,16 @@ fi
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Archiving current logs..."
 tsm maintenance ziplogs -t -o -f logs-$DATE.zip $tsmparams
+if [ $? -ne 0 ]; then
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "ERROR: Log archive operation failed."
+  exit 6
+fi
 #copy logs to different location (optional)
-if [ "$copylogs" == "yes" ]; then
+if [ "$copy_logs" == "yes" ]; then
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Copying logs to remote share"
-	cp $log_path/$log_name-$DATE $external_log_path/ 
+	cp "$log_path/$log_name-$DATE" "$external_log_path"/ 
 fi
 
 # END OF LOGS SECTION
@@ -104,6 +146,11 @@ fi
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up Tableau Server..."
 tsm maintenance cleanup -a $tsmparams
+if [ $? -ne 0 ]; then
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "ERROR: Cleanup operation failed."
+  exit 7
+fi
 # restart the server (optional, uncomment to run)
 	#echo "Restarting Tableau Server"
 	#tsm restart $tsmparams

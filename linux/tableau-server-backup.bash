@@ -51,6 +51,35 @@ load_environment_file() {
   fi
 }
 
+# Call the environment loading function
+load_environment_file
+
+# Function to check TSM availability and configuration
+check_tsm_prerequisites() {
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "Checking TSM availability..."
+  
+  # Check if TSM is available
+  if ! command -v tsm &> /dev/null; then
+    echo $TIMESTAMP "ERROR: TSM command not found. Please ensure Tableau Server is installed and TSM is in PATH."
+    exit 2
+  fi
+  
+  # Check TSM version
+  if ! tsm version &> /dev/null; then
+    echo $TIMESTAMP "ERROR: TSM is not responsive. Please check Tableau Server status."
+    exit 3
+  fi
+  
+  # Check if we can access TSM configuration
+  if ! tsm configuration get -k basefilepath.backuprestore $tsmparams &> /dev/null; then
+    echo $TIMESTAMP "ERROR: Cannot access TSM configuration. Please check TSM permissions."
+    exit 4
+  fi
+  
+  echo $TIMESTAMP "TSM validation completed successfully."
+}
+
 if [ "$#" -eq 2 ] ; then
 	# Get tsm username from command line input
 	tsmuser="$1"
@@ -62,38 +91,56 @@ elif [ $(echo $TABLEAU_SERVER_DATA_DIR_VERSION | cut -d. -f1) -ge 20192 ]  && (i
 	declare tsmparams
 fi
 
+# Run TSM validation
+check_tsm_prerequisites
+
 # BACKUP SECTION
 
 # get the path to the backups folder
 backup_path=$(tsm configuration get -k basefilepath.backuprestore $tsmparams)
+if [ $? -ne 0 ] || [ -z "$backup_path" ]; then
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "ERROR: Failed to retrieve backup path from TSM configuration."
+  exit 5
+fi
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "The path for storing backups is $backup_path" 
 
 # count the number of backup files eligible for deletion and output 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up old backups..."
-lines=$(find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days | wc -l)
+lines=$(find "$backup_path" -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days | wc -l)
 if [ $lines -eq 0 ]; then 
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP $lines old backups found, skipping...
 else echo  $TIMESTAMP $lines old backups found, deleting...
 	#remove backup files older than N days
-	find $backup_path -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm -f {} \;
+	find "$backup_path" -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm -f {} \;
 fi
 
 #export current settings
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Exporting current settings..."
-tsm settings export -f $backup_path/settings-$DATE.json $tsmparams
+tsm settings export -f "$backup_path/settings-$DATE.json" $tsmparams
+if [ $? -ne 0 ]; then
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "ERROR: Settings export failed."
+  exit 6
+fi
 #create current backup
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Backup up Tableau Server data..."
-tsm maintenance backup -f $backup_name -d $tsmparams
+tsm maintenance backup -f "$backup_name" -d $tsmparams
+if [ $? -ne 0 ]; then
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "ERROR: Backup operation failed."
+  exit 7
+fi
 #copy backups to different location (optional)
 if [ "$copy_backup" == "yes" ]; then
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Copying backup and settings to remote share"
-	cp $backup_path/* $external_backup_path/
+	cp "$backup_path"/* "$external_backup_path"/
 fi
 
 # END OF BACKUP SECTION
