@@ -26,6 +26,23 @@ if %ERRORLEVEL% NEQ 0 (
   EXIT /B 1
 )
 
+:: Check if TSM is available and responsive
+:check_tsm_availability
+ECHO %date% %time% : Checking TSM availability
+tsm version >NUL 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: TSM is not available or not in PATH. Please ensure Tableau Server is installed and TSM is accessible.
+  EXIT /B 2
+)
+
+:: Check if TSM status is accessible
+ECHO %date% %time% : Validating TSM status access
+tsm status >NUL 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: Cannot access TSM status. Please ensure you have proper TSM permissions.
+  EXIT /B 3
+)
+
 :: Parses command line parameters
 :parse_command_line_params
 IF "%1"=="" GOTO end_parse
@@ -34,14 +51,18 @@ IF "%1"=="--help" GOTO show_help
 
 :end_parse
 
-:: Then we archive the logs
+:: Then we clean up the logs and temp files
 :cleanup
 ECHO %date% %time% : Cleaning up Tableau Server log and temp files
 CALL tsm maintenance cleanup -l -t
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: Cleanup operation failed with exit code %ERRORLEVEL%
+  EXIT /B 4
+)
 
 :end_msg
 IF %ERRORLEVEL% EQU 0 (
-	ECHO %date% %time% : Cleanup completed succesfully. 
+	ECHO %date% %time% : Cleanup completed successfully. 
 	EXIT /B 0 
 	)
 IF %ERRORLEVEL% GTR 0 (

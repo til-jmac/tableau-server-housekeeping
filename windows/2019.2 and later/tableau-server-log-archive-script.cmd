@@ -24,6 +24,23 @@ if %ERRORLEVEL% NEQ 0 (
   EXIT /B 1
 )
 
+:: Check if TSM is available and responsive
+:check_tsm_availability
+ECHO %date% %time% : Checking TSM availability
+tsm version >NUL 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: TSM is not available or not in PATH. Please ensure Tableau Server is installed and TSM is accessible.
+  EXIT /B 2
+)
+
+:: Check if TSM configuration is accessible
+ECHO %date% %time% : Validating TSM configuration access
+tsm configuration get -k basefilepath.log_archive >NUL 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: Cannot access TSM configuration. Please ensure you have proper TSM permissions.
+  EXIT /B 3
+)
+
 :: Let's grab a consistent date in the same format that Tableau Server writes the date to the end of the backup file name
 :set_date
 FOR /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') DO SET "dt=%%a"
@@ -58,6 +75,14 @@ IF "%archivedays%" == "" (
 :set_archive_dir
 ECHO %date% %time% : Getting the location of the default log archive directory
 FOR /F "tokens=* USEBACKQ" %%F IN (`tsm configuration get -k basefilepath.log_archive`) DO (SET "archivepath=%%F")
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: Failed to retrieve log archive directory path from TSM configuration.
+  EXIT /B 4
+)
+if "%archivepath%"=="" (
+  ECHO %date% %time% : ERROR: Log archive directory path is empty. Please check TSM configuration.
+  EXIT /B 5
+)
 ECHO The default archive path is: 
 ECHO %archivepath%
 
@@ -77,10 +102,14 @@ FORFILES -p "%archivepath%" -s -m *.zip /D -%archivedays% /C "cmd /c del @path" 
 :archive
 ECHO %date% %time% : Archiving Tableau Server log files
 CALL tsm maintenance ziplogs -a -o -f logs-%mydate%
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: Log archive operation failed with exit code %ERRORLEVEL%
+  EXIT /B 6
+)
 
 :end_msg
 IF %ERRORLEVEL% EQU 0 (
-	ECHO %date% %time% : Log archival completed succesfully. 
+	ECHO %date% %time% : Log archival completed successfully. 
 	EXIT /B 0 
 	)
 IF %ERRORLEVEL% GTR 0 (

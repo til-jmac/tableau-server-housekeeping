@@ -21,6 +21,23 @@ if %ERRORLEVEL% NEQ 0 (
   EXIT /B 1
 )
 
+:: Check if TSM is available and responsive
+:check_tsm_availability
+ECHO %date% %time% : Checking TSM availability
+tsm version >NUL 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: TSM is not available or not in PATH. Please ensure Tableau Server is installed and TSM is accessible.
+  EXIT /B 2
+)
+
+:: Check if TSM configuration is accessible
+ECHO %date% %time% : Validating TSM configuration access
+tsm configuration get -k basefilepath.backuprestore >NUL 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: Cannot access TSM configuration. Please ensure you have proper TSM permissions.
+  EXIT /B 3
+)
+
 :: Sets a global script variable for later
 SET overwrite_requested=false
 
@@ -112,6 +129,14 @@ ECHO %date% %time% : Overwrite was not requested, proceeding
 :set_backup_dir
 ECHO %date% %time% : Getting the location of the default backup directory
 FOR /F "tokens=* USEBACKQ" %%F IN (`tsm configuration get -k basefilepath.backuprestore`) DO (SET "backuppath=%%F")
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: Failed to retrieve backup directory path from TSM configuration.
+  EXIT /B 4
+)
+if "%backuppath%"=="" (
+  ECHO %date% %time% : ERROR: Backup directory path is empty. Please check TSM configuration.
+  EXIT /B 5
+)
 ECHO The default backup path is: 
 ECHO %backuppath%
 
@@ -140,14 +165,22 @@ FORFILES -p "%backuppath%" -s -m *.json /D -%backupdays% /C "cmd /c del @path" 2
 :bakup
 ECHO %date% %time% : Backing up Tableau Server data
 CALL tsm maintenance backup -f "%filename%" -d
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: Backup operation failed with exit code %ERRORLEVEL%
+  EXIT /B 6
+)
 
 :: Then we backup the settings config file
 :settings_bakup
 CALL tsm settings export -f "%backuppath%\%filename%-settings-%mydate%.json"
+if %ERRORLEVEL% NEQ 0 (
+  ECHO %date% %time% : ERROR: Settings export failed with exit code %ERRORLEVEL%
+  EXIT /B 7
+)
 
 :end_msg
 IF %ERRORLEVEL% EQU 0 (
-	ECHO %date% %time% : Backup completed succesfully. 
+	ECHO %date% %time% : Backup completed successfully. 
 	EXIT /B 0 
 	)
 IF %ERRORLEVEL% GTR 0 (
