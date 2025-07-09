@@ -29,18 +29,18 @@ Robust, production-ready housekeeping scripts for Tableau Server with comprehens
 ## Prerequisites
 
 - **Tableau Server 2018.2 or later**
-- **Permissions**: User must be member of:
+- **User Permissions**: The user running the scripts must be a member of:
   - Linux: `tsmadmin` group
   - Windows: Local Administrators group  
 - **TSM availability**: Scripts validate TSM is installed and responsive
-- **Elevated privileges**: Scripts must run with administrator/root privileges
+- **File Access**: User needs read/write access to Tableau Server backup and log directories
 
 ## Installation
 
 ### Windows Installation
 1. Download the appropriate scripts from the `windows/2019.2 and later/` folder
 2. Place scripts in a secure location accessible to your Tableau Server
-3. Run with elevated privileges (Administrator)
+3. Run as a user who is a member of the Local Administrators group
 
 ### Linux Installation
 
@@ -48,7 +48,7 @@ Robust, production-ready housekeeping scripts for Tableau Server with comprehens
 ```bash
 wget https://raw.githubusercontent.com/til-jmac/tableau-server-housekeeping/master/linux/setup.bash
 chmod +x setup.bash
-sudo ./setup.bash
+./setup.bash
 ```
 
 **Manual way**: Download scripts directly and customize as needed
@@ -82,23 +82,25 @@ tableau-server-log-archive-script.cmd -d <days>
 
 **Backup Only:**
 ```bash
-sudo -u <tsm_user> /path/to/tableau-server-backup.bash
+/path/to/tableau-server-backup.bash
 ```
 
 **Complete Housekeeping:**
 ```bash
-sudo -u <tsm_user> /path/to/tableau-server-housekeeping-linux.bash
+/path/to/tableau-server-housekeeping-linux.bash
 ```
 
 **Logs & Cleanup:**
 ```bash
-sudo -u <tsm_user> /path/to/tableau-server-logs-cleanup.bash
+/path/to/tableau-server-logs-cleanup.bash
 ```
 
 **With credentials (pre-2019.2):**
 ```bash
-sudo -u <tsm_user> /path/to/script.bash <username> <password>
+/path/to/script.bash <username> <password>
 ```
+
+**Note**: Run as a user who is a member of the `tsmadmin` group
 
 ## Error Handling & Exit Codes
 
@@ -107,7 +109,7 @@ All scripts include comprehensive error handling with specific exit codes for tr
 | Exit Code | Meaning |
 |-----------|---------|
 | 0 | Success |
-| 1 | Not running as Administrator/root |
+| 1 | Not running with required administrator privileges |
 | 2 | TSM command not found or not accessible |
 | 3 | TSM not responsive or configuration issues |
 | 4 | TSM configuration access denied |
@@ -139,7 +141,7 @@ Scripts automatically validate:
 - Check Tableau Server status
 
 **"Permission denied"**
-- Run scripts with elevated privileges
+- Ensure user is member of required group (tsmadmin/Local Administrators)
 - Verify file permissions on script files
 - Check directory permissions for backup/log paths
 
@@ -182,10 +184,11 @@ Add to crontab for automatic execution:
 ## Security Considerations
 
 - Store scripts in secure locations with appropriate permissions
-- Use service accounts with minimal required privileges
+- Use dedicated service accounts with only required group membership (tsmadmin/Local Administrators)
 - Regularly review and update retention policies
 - Monitor script execution logs for security events
 - Consider encrypting backup destinations
+- Avoid running with unnecessary elevated privileges
 
 ## Version Compatibility
 
