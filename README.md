@@ -22,9 +22,17 @@ Robust, production-ready housekeeping scripts for Tableau Server with comprehens
 - `tableau-server-log-archive-script.cmd` - Archives current log files
 
 ### Linux Scripts
+
+**Individual Function Scripts** (Windows equivalent structure):
 - `tableau-server-backup.bash` - Creates backups and exports settings
+- `tableau-server-cleanup.bash` - Cleans up logs and temporary files
+- `tableau-server-log-archive.bash` - Archives current log files  
+
+**Combined Scripts** (Linux-specific):
 - `tableau-server-housekeeping-linux.bash` - Complete housekeeping (backup, logs, cleanup)
-- `tableau-server-logs-cleanup.bash` - Archives logs and performs cleanup
+- `tableau-server-logs-cleanup.bash` - Archives logs and performs cleanup (legacy)
+
+**Script Organization**: Linux now offers both individual scripts (matching Windows functionality) and combined scripts for convenience. Use individual scripts for targeted operations or combined scripts for comprehensive housekeeping.
 
 ## Prerequisites
 
@@ -85,19 +93,29 @@ tableau-server-log-archive-script.cmd -d <days>
 /path/to/tableau-server-backup.bash
 ```
 
+**Cleanup Only:**
+```bash
+/path/to/tableau-server-cleanup.bash
+```
+
+**Log Archive Only:**
+```bash
+/path/to/tableau-server-log-archive.bash <retention_days>
+```
+
 **Complete Housekeeping:**
 ```bash
 /path/to/tableau-server-housekeeping-linux.bash
 ```
 
-**Logs & Cleanup:**
+**Legacy Logs & Cleanup:**
 ```bash
 /path/to/tableau-server-logs-cleanup.bash
 ```
 
 **With credentials (pre-2019.2):**
 ```bash
-/path/to/script.bash <username> <password>
+/path/to/script.bash <username> <password> [additional_params]
 ```
 
 **Note**: Run as a user who is a member of the `tsmadmin` group
