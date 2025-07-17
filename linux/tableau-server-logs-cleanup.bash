@@ -10,11 +10,7 @@
 #			You must execute the script as a user that is a member of the tsmadmin group
 #			sudo su -l <tsmusername> -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh <tsmusername> <tsmpassword>
 #
-#		NOTE you have to add your tsm username and password at the end of the command to execute the script. 
-#			This avoids you having to hardcode credentials into the script itself
-#
-#		*UPDATE* starting in 2019.2 the above requirement to include credentials will no longer be necessary,
-# 			provided the user executing the script is a member of the tsmadmin group  
+#		Run as a user that is a member of the tsmadmin group  
 #
 #		Schedule the script using cron to run on a regular basis
 #			sudo su -l $tsmuser -c "crontab -e"
@@ -74,7 +70,7 @@ check_tsm_prerequisites() {
   fi
   
   # Check if we can access TSM configuration
-  if ! tsm configuration get -k basefilepath.log_archive $tsmparams &> /dev/null; then
+  if ! tsm configuration get -k basefilepath.log_archive &> /dev/null; then
     echo $TIMESTAMP "ERROR: Cannot access TSM configuration. Please check TSM permissions."
     exit 4
   fi
@@ -82,15 +78,10 @@ check_tsm_prerequisites() {
   echo $TIMESTAMP "TSM validation completed successfully."
 }
 
-if [ "$#" -eq 2 ] ; then
-	# Get tsm username from command line input
-	tsmuser="$1"
-	# Get tsm password from command line input
-	tsmpassword="$2" 
-	tsmparams="-u $tsmuser -p $tsmpassword"
-elif [ $(echo $TABLEAU_SERVER_DATA_DIR_VERSION | cut -d. -f1) -ge 20192 ]  && (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]) ; then 
-	# 2019.2 workflow. If running as tsmadmin member or root, do not set userinfo
-	declare tsmparams
+# Verify user is member of tsmadmin group or root
+if ! (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]); then
+	echo "ERROR: Script must be run as a member of the tsmadmin group or as root."
+	exit 1
 fi
 
 # Run TSM validation
@@ -99,7 +90,7 @@ check_tsm_prerequisites
 # LOGS SECTION
 
 # get the path to the log archive folder
-log_path=$(tsm configuration get -k basefilepath.log_archive $tsmparams)
+log_path=$(tsm configuration get -k basefilepath.log_archive)
 if [ $? -ne 0 ] || [ -z "$log_path" ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Failed to retrieve log archive path from TSM configuration."
@@ -125,7 +116,7 @@ fi
 #archive current logs 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Archiving current logs..."
-tsm maintenance ziplogs -t -o -f logs-$DATE.zip $tsmparams
+tsm maintenance ziplogs -t -o -f logs-$DATE.zip
 if [ $? -ne 0 ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Log archive operation failed."
@@ -145,7 +136,7 @@ fi
 # cleanup old logs and temp files 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up Tableau Server..."
-tsm maintenance cleanup -a $tsmparams
+tsm maintenance cleanup -a
 if [ $? -ne 0 ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Cleanup operation failed."
@@ -153,7 +144,7 @@ if [ $? -ne 0 ]; then
 fi
 # restart the server (optional, uncomment to run)
 	#echo "Restarting Tableau Server"
-	#tsm restart $tsmparams
+	#tsm restart
 
 # END OF CLEANUP AND RESTART SECTION
 

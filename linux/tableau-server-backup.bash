@@ -9,11 +9,7 @@
 #			You must execute the script as a user that is a member of the tsmadmin group
 #			sudo su -l <tsmusername> -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh <tsmusername> <tsmpassword>
 #
-#		NOTE you have to add your tsm username and password at the end of the command to execute the script. 
-#			This avoids you having to hardcode credentials into the script itself
-#
-#		*UPDATE* starting in 2019.2 the above requirement to include credentials will no longer be necessary,
-# 			provided the user executing the script is a member of the tsmadmin group  
+#		Run as a user that is a member of the tsmadmin group  
 #
 #		Schedule the script using cron to run on a regular basis
 #			sudo su -l $tsmuser -c "crontab -e"
@@ -72,7 +68,7 @@ check_tsm_prerequisites() {
   fi
   
   # Check if we can access TSM configuration
-  if ! tsm configuration get -k basefilepath.backuprestore $tsmparams &> /dev/null; then
+  if ! tsm configuration get -k basefilepath.backuprestore &> /dev/null; then
     echo $TIMESTAMP "ERROR: Cannot access TSM configuration. Please check TSM permissions."
     exit 4
   fi
@@ -80,15 +76,10 @@ check_tsm_prerequisites() {
   echo $TIMESTAMP "TSM validation completed successfully."
 }
 
-if [ "$#" -eq 2 ] ; then
-	# Get tsm username from command line input
-	tsmuser="$1"
-	# Get tsm password from command line input
-	tsmpassword="$2" 
-	tsmparams="-u $tsmuser -p $tsmpassword"
-elif [ $(echo $TABLEAU_SERVER_DATA_DIR_VERSION | cut -d. -f1) -ge 20192 ]  && (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]) ; then 
-	# 2019.2 workflow. If running as tsmadmin member or root, do not set userinfo
-	declare tsmparams
+# Verify user is member of tsmadmin group or root
+if ! (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]); then
+	echo "ERROR: Script must be run as a member of the tsmadmin group or as root."
+	exit 1
 fi
 
 # Run TSM validation
@@ -97,7 +88,7 @@ check_tsm_prerequisites
 # BACKUP SECTION
 
 # get the path to the backups folder
-backup_path=$(tsm configuration get -k basefilepath.backuprestore $tsmparams)
+backup_path=$(tsm configuration get -k basefilepath.backuprestore)
 if [ $? -ne 0 ] || [ -z "$backup_path" ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Failed to retrieve backup path from TSM configuration."
@@ -121,7 +112,7 @@ fi
 #export current settings
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Exporting current settings..."
-tsm settings export -f "$backup_path/settings-$DATE.json" $tsmparams
+tsm settings export -f "$backup_path/settings-$DATE.json"
 if [ $? -ne 0 ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Settings export failed."
@@ -130,7 +121,7 @@ fi
 #create current backup
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Backup up Tableau Server data..."
-tsm maintenance backup -f "$backup_name" -d $tsmparams
+tsm maintenance backup -f "$backup_name" -d
 if [ $? -ne 0 ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Backup operation failed."

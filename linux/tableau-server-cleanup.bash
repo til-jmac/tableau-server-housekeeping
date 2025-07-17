@@ -9,13 +9,7 @@
 #		Test that the script works in your environment by running it manually
 #			You must execute the script as a user that is a member of the tsmadmin group
 #
-#		NOTE If Server release is behind 2019.2, you have to add your tsm username and password at the end of the command to execute the script. 
-#			This avoids you having to hardcode credentials into the script itself
-#
-#				/var/opt/tableau/tableau_server/scripts/tableau-server-cleanup.bash <tsmusername> <tsmpassword>
-#
-#		*UPDATE* starting in 2019.2 the above requirement to include credentials will no longer be necessary,
-# 			provided the user executing the script is a member of the tsmadmin group  
+#		Run as a user that is a member of the tsmadmin group:
 #				/var/opt/tableau/tableau_server/scripts/tableau-server-cleanup.bash
 #
 #		Schedule the script using cron to run on a regular basis
@@ -65,7 +59,7 @@ check_tsm_prerequisites() {
   fi
   
   # Check if we can access TSM status
-  if ! tsm status $tsmparams &> /dev/null; then
+  if ! tsm status &> /dev/null; then
     echo $TIMESTAMP "ERROR: Cannot access TSM status. Please check TSM permissions."
     exit 4
   fi
@@ -73,15 +67,10 @@ check_tsm_prerequisites() {
   echo $TIMESTAMP "TSM validation completed successfully."
 }
 
-if [ "$#" -eq 2 ] ; then
-	# Get tsm username from command line input
-	tsmuser="$1"
-	# Get tsm password from command line input
-	tsmpassword="$2" 
-	tsmparams="-u $tsmuser -p $tsmpassword"
-elif [ $(echo $TABLEAU_SERVER_DATA_DIR_VERSION | cut -d. -f1) -ge 20192 ]  && (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]) ; then 
-	# 2019.2 workflow. If running as tsmadmin member or root, do not set userinfo
-	declare tsmparams
+# Verify user is member of tsmadmin group or root
+if ! (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]); then
+	echo "ERROR: Script must be run as a member of the tsmadmin group or as root."
+	exit 1
 fi
 
 # Run TSM validation
@@ -92,7 +81,7 @@ check_tsm_prerequisites
 # cleanup old logs and temp files 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up Tableau Server log and temp files..."
-tsm maintenance cleanup -l -t $tsmparams
+tsm maintenance cleanup -l -t
 if [ $? -ne 0 ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Cleanup operation failed."

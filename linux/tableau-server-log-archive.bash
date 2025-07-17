@@ -9,13 +9,7 @@
 #		Test that the script works in your environment by running it manually
 #			You must execute the script as a user that is a member of the tsmadmin group
 #
-#		NOTE If Server release is behind 2019.2, you have to add your tsm username and password at the end of the command to execute the script. 
-#			This avoids you having to hardcode credentials into the script itself
-#
-#				/var/opt/tableau/tableau_server/scripts/tableau-server-log-archive.bash <tsmusername> <tsmpassword> <days>
-#
-#		*UPDATE* starting in 2019.2 the above requirement to include credentials will no longer be necessary,
-# 			provided the user executing the script is a member of the tsmadmin group  
+#		Run as a user that is a member of the tsmadmin group:
 #				/var/opt/tableau/tableau_server/scripts/tableau-server-log-archive.bash <days>
 #
 #		Schedule the script using cron to run on a regular basis
@@ -75,7 +69,7 @@ check_tsm_prerequisites() {
   fi
   
   # Check if we can access TSM configuration
-  if ! tsm configuration get -k basefilepath.log_archive $tsmparams &> /dev/null; then
+  if ! tsm configuration get -k basefilepath.log_archive &> /dev/null; then
     echo $TIMESTAMP "ERROR: Cannot access TSM configuration. Please check TSM permissions."
     exit 4
   fi
@@ -83,23 +77,19 @@ check_tsm_prerequisites() {
   echo $TIMESTAMP "TSM validation completed successfully."
 }
 
+# Verify user is member of tsmadmin group or root
+if ! (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]); then
+	echo "ERROR: Script must be run as a member of the tsmadmin group or as root."
+	exit 1
+fi
+
 # Parse command line arguments
-if [ "$#" -eq 3 ] ; then
-	# Get tsm username from command line input
-	tsmuser="$1"
-	# Get tsm password from command line input
-	tsmpassword="$2"
+if [ "$#" -eq 1 ] ; then
 	# Get retention days from command line input
-	log_days="$3"
-	tsmparams="-u $tsmuser -p $tsmpassword"
-elif [ "$#" -eq 1 ] && [ $(echo $TABLEAU_SERVER_DATA_DIR_VERSION | cut -d. -f1) -ge 20192 ]  && (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]) ; then 
-	# 2019.2 workflow. If running as tsmadmin member or root, do not set userinfo
 	log_days="$1"
-	declare tsmparams
 else
-	echo "Usage: $0 [<username> <password>] <retention_days>"
+	echo "Usage: $0 <retention_days>"
 	echo "  retention_days: Delete log archives older than N days"
-	echo "  For Tableau Server 2019.2+, credentials are not required if running as tsmadmin member"
 	exit 1
 fi
 
@@ -109,7 +99,7 @@ check_tsm_prerequisites
 # LOGS SECTION
 
 # get the path to the log archive folder
-log_path=$(tsm configuration get -k basefilepath.log_archive $tsmparams)
+log_path=$(tsm configuration get -k basefilepath.log_archive)
 if [ $? -ne 0 ] || [ -z "$log_path" ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Failed to retrieve log archive path from TSM configuration."
@@ -137,7 +127,7 @@ fi
 #archive current logs 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Archiving current logs..."
-tsm maintenance ziplogs -a -o -f logs-$DATE.zip $tsmparams
+tsm maintenance ziplogs -a -o -f logs-$DATE.zip
 if [ $? -ne 0 ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Log archive operation failed."
