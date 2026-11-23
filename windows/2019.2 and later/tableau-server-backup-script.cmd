@@ -79,6 +79,15 @@ IF NOT DEFINED backupdays (
 	ECHO ERROR: Please specify a valid retention period. Cancelling.
 	GOTO invalid_args
 	)
+:: Days must be a positive whole number. FOR /F with digits as delimiters returns a token only if a non-digit is present.
+:: The leading 1 stops a value starting with ; being skipped as a comment line. The quotes keep characters special to cmd inert.
+SET "days_invalid="
+FOR /F "delims=0123456789" %%A IN ("1%backupdays%") DO SET "days_invalid=1"
+IF "%backupdays:~0,1%"=="0" SET "days_invalid=1"
+IF DEFINED days_invalid (
+	ECHO ERROR: The retention period must be a whole number of days, 1 or more. Cancelling.
+	GOTO invalid_args
+	)
 
 :check_overwrite_flag
 IF NOT DEFINED overwrite_requested (
@@ -195,16 +204,17 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :: Now that the new backup and settings export have succeeded, remove backup files older than N days
+:: Only files this script creates (named after -n) in the backup directory itself are matched, subfolders are not searched
 :: Running this last means the newest backup always survives
 :: FORFILES reports "No files found" as an error when nothing is old enough, which is normal, so hide only that message
 :delete_old_files
 ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
-FORFILES /P "%backuppath%" /S /M *.tsbak /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
+FORFILES /P "%backuppath%" /M "%filename%-*.tsbak" /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
-:: Do the same for settings.json files
+:: Do the same for the settings .json files
 :delete_old_settings_files
 ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
-FORFILES /P "%backuppath%" /S /M *.json /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
+FORFILES /P "%backuppath%" /M "%filename%-settings-*.json" /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :end_msg
 ECHO %date% %time% : Backup completed successfully.
@@ -225,7 +235,8 @@ ECHO Usage:
 ECHO tableau-server-backup-script.cmd -n ^<filename^> -d ^<days^> -o ^<true/false^>
 ECHO Required parameters (use in sequence):
 ECHO 		-n,--name 		Name of the backup file (no spaces, periods or funny characters)
-ECHO 		-d,--days 		Delete backup files in the backup location older than N days
+ECHO 		-d,--days 		Delete backups older than N days, N a whole number 1 or more. Only files named ^<filename^>-*.tsbak
+ECHO 		          		and ^<filename^>-settings-*.json in the backup location are deleted
 ECHO 		-o,--overwrite 		Overwrite any existing backup with the same name (takes appended date into account)
 ECHO 		-h,--help 		Show this help
 GOTO :EOF

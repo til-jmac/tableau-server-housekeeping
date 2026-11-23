@@ -54,6 +54,15 @@ IF NOT DEFINED archivedays (
 	ECHO ERROR: Please specify a valid log archive retention period. Cancelling.
 	GOTO invalid_args
 	)
+:: Days must be a positive whole number. FOR /F with digits as delimiters returns a token only if a non-digit is present.
+:: The leading 1 stops a value starting with ; being skipped as a comment line. The quotes keep characters special to cmd inert.
+SET "days_invalid="
+FOR /F "delims=0123456789" %%A IN ("1%archivedays%") DO SET "days_invalid=1"
+IF "%archivedays:~0,1%"=="0" SET "days_invalid=1"
+IF DEFINED days_invalid (
+	ECHO ERROR: The retention period must be a whole number of days, 1 or more. Cancelling.
+	GOTO invalid_args
+	)
 
 :: Checks that the script is being run with Admin rights. fltmc needs elevation but, unlike NET SESSION, not the Server service.
 :check_admin
@@ -122,11 +131,12 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :: Now that the new log archive has succeeded, remove log archives older than N days
+:: Only logs-*.zip files this script creates in the log archive directory itself are matched, subfolders are not searched
 :: Running this last means the newest archive always survives
 :: FORFILES reports "No files found" as an error when nothing is old enough, which is normal, so hide only that message
 :delete_old_files
 ECHO %date% %time% : Cleaning out archive files older than %archivedays% days
-FORFILES /P "%archivepath%" /S /M *.zip /D -%archivedays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
+FORFILES /P "%archivepath%" /M "logs-*.zip" /D -%archivedays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :end_msg
 ECHO %date% %time% : Log archival completed successfully.
@@ -146,6 +156,7 @@ EXIT /B 10
 ECHO Usage:
 ECHO tableau-server-log-archive-script.cmd -d ^<days^>
 ECHO Global parameters (use in sequence):
-ECHO 		-d,--days 		Delete log archives in the log archive path older than N days
+ECHO 		-d,--days 		Delete log archives older than N days, N a whole number 1 or more. Only files named
+ECHO 		          		logs-*.zip in the log archive path are deleted
 ECHO 		-h,--help 		Show this help
 GOTO :EOF
