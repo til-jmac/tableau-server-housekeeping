@@ -90,6 +90,18 @@ if ! (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]); then
 	exit 1
 fi
 
+# Validate retention days (backup_days) is a positive integer
+if ! [[ "$backup_days" =~ ^[1-9][0-9]*$ ]]; then
+	echo "ERROR: backup_days must be a positive integer (got '$backup_days')."
+	exit 9
+fi
+
+# Validate retention days (log_days) is a positive integer
+if ! [[ "$log_days" =~ ^[1-9][0-9]*$ ]]; then
+	echo "ERROR: log_days must be a positive integer (got '$log_days')."
+	exit 10
+fi
+
 # Run TSM validation
 check_tsm_prerequisites
 
@@ -118,7 +130,7 @@ fi
 # count the number of log files eligible for deletion and output 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up old log files..."
-lines=$(find "$log_path" -type f -name '*.zip' -mtime +$log_days | wc -l)
+lines=$(find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$log_days" | wc -l)
 if [ $lines -eq 0 ]; then 
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP $lines found, skipping...	
@@ -126,7 +138,7 @@ else
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP $lines found, deleting...
 	#remove log archives older than the specified number of days
-	find "$log_path" -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
+	find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$log_days" -exec rm {} \;
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Cleaning up completed."		
 fi
@@ -192,14 +204,14 @@ fi
 # count the number of backup files eligible for deletion and output
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up old backups..."
-lines=$(find "$backup_path" -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days | wc -l)
+lines=$(find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name 'settings-*.json' \) -mtime +"$backup_days" | wc -l)
 if [ $lines -eq 0 ]; then 
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP $lines old backups found, skipping...
 else 
 	echo  $TIMESTAMP $lines old backups found, deleting...
 	#remove backup files older than N days
-	find "$backup_path" -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm -f {} \;
+	find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name 'settings-*.json' \) -mtime +"$backup_days" -exec rm -f {} \;
 fi
 #copy backups to different location (optional)
 if [ "$copy_backup" == "yes" ]; then
