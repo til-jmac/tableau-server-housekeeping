@@ -8,7 +8,7 @@
 #		Test that the script works in your environment by running it manually
 #
 #		Run as a user that is a member of the tsmadmin group:
-#				sudo su -l <tsmusername> -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh
+#				sudo su -l <tsmusername> -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping-linux.bash
 #
 #		Schedule the script using cron to run on a regular basis
 #			sudo su -l $tsmuser -c "crontab -e"
@@ -18,15 +18,15 @@
 #		logs older than one day, so a weekly schedule loses most logs.
 #
 #		For example, to schedule it to run once a day at 01:00, add this to your crontab
-#			0 1 * * * /var/opt/tableau/tableau_server/scripts/<SCRIPT_FILE_NAME_HERE> > /home/<TSM_USER>/tableau-server-housekeeping.log
+#			0 1 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping-linux.bash > /home/<TSM_USER>/tableau-server-housekeeping.log
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
 
 # Grab the current date in YYYY-MM-DD format
-DATE=`date +%Y-%m-%d`
+DATE=$(date +%Y-%m-%d)
 # Grab the current datetime for timestamping the log entries
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 # The OS group whose members are allowed to run tsm commands
 tsm_group="tsmadmin"
 # Do you want to copy your backups to another location after completion?
@@ -66,28 +66,28 @@ load_environment_file
 
 # Function to check TSM availability and configuration
 check_tsm_prerequisites() {
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "Checking TSM availability..."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "Checking TSM availability..."
   
   # Check if TSM is available
   if ! command -v tsm &> /dev/null; then
-    echo $TIMESTAMP "ERROR: TSM command not found. Please ensure Tableau Server is installed and TSM is in PATH."
+    echo "$TIMESTAMP" "ERROR: TSM command not found. Please ensure Tableau Server is installed and TSM is in PATH."
     exit 2
   fi
   
   # Check TSM version
   if ! tsm version &> /dev/null; then
-    echo $TIMESTAMP "ERROR: TSM is not responsive. Please check Tableau Server status."
+    echo "$TIMESTAMP" "ERROR: TSM is not responsive. Please check Tableau Server status."
     exit 3
   fi
   
   # Check if we can access TSM configuration
   if ! tsm configuration get -k basefilepath.log_archive &> /dev/null; then
-    echo $TIMESTAMP "ERROR: Cannot access TSM configuration. Please check TSM permissions."
+    echo "$TIMESTAMP" "ERROR: Cannot access TSM configuration. Please check TSM permissions."
     exit 4
   fi
   
-  echo $TIMESTAMP "TSM validation completed successfully."
+  echo "$TIMESTAMP" "TSM validation completed successfully."
 }
 
 # Verify user is member of the TSM group or root
@@ -116,45 +116,45 @@ check_tsm_prerequisites
 # get the path to the log archive folder
 log_path=$(tsm configuration get -k basefilepath.log_archive)
 if [ $? -ne 0 ] || [ -z "$log_path" ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Failed to retrieve log archive path from TSM configuration."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "ERROR: Failed to retrieve log archive path from TSM configuration."
   exit 5
 fi
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "The path for storing log archives is $log_path" 
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "The path for storing log archives is $log_path" 
 
 #archive current logs 
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Archiving current logs..."
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Archiving current logs..."
 tsm maintenance ziplogs -t -o -f "logs-$DATE.zip"
 if [ $? -ne 0 ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Log archive operation failed."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "ERROR: Log archive operation failed."
   exit 6
 fi
 
 # count the number of log files eligible for deletion and output 
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Cleaning up old log files..."
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Cleaning up old log files..."
 lines=$(find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$((log_days - 1))" | wc -l)
-if [ $lines -eq 0 ]; then 
-	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-	echo $TIMESTAMP $lines found, skipping...	
+if [ "$lines" -eq 0 ]; then 
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "$lines found, skipping..."
 else 
-	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-	echo $TIMESTAMP $lines found, deleting...
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "$lines found, deleting..."
 	#remove log archives older than the specified number of days
 	find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$((log_days - 1))" -exec rm {} \;
-	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-	echo $TIMESTAMP "Cleaning up completed."		
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "Cleaning up completed."		
 fi
 #copy logs to different location (optional)
 if [ "$copy_logs" == "yes" ]; then
-	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-	echo $TIMESTAMP "Copying logs to remote share"
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "Copying logs to remote share"
 	if ! cp "$log_path/logs-$DATE.zip" "$external_log_path/"; then
-		TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-		echo $TIMESTAMP "ERROR: Failed to copy log archive to $external_log_path (continuing)."
+		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+		echo "$TIMESTAMP" "ERROR: Failed to copy log archive to $external_log_path (continuing)."
 	fi
 fi
 
@@ -164,12 +164,12 @@ fi
 # CLEANUP SECTION
 
 # cleanup old logs and temp files 
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Cleaning up Tableau Server..."
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Cleaning up Tableau Server..."
 tsm maintenance cleanup -l -t
 if [ $? -ne 0 ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Cleanup operation failed."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "ERROR: Cleanup operation failed."
   exit 8
 fi
 
@@ -181,49 +181,50 @@ fi
 # get the path to the backups folder
 backup_path=$(tsm configuration get -k basefilepath.backuprestore)
 if [ $? -ne 0 ] || [ -z "$backup_path" ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Failed to retrieve backup path from TSM configuration."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "ERROR: Failed to retrieve backup path from TSM configuration."
   exit 5
 fi
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "The path for storing backups is $backup_path"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "The path for storing backups is $backup_path"
 
 #create current backup
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Backup up Tableau Server data..."
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Backup up Tableau Server data..."
 tsm maintenance backup -f "$backup_name" -d
 if [ $? -ne 0 ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Backup operation failed."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "ERROR: Backup operation failed."
   exit 7
 fi
 
 #export current settings
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Exporting current settings..."
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Exporting current settings..."
 tsm settings export -f "$backup_path/${backup_name}-settings-$DATE.json"
 if [ $? -ne 0 ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Settings export failed."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "ERROR: Settings export failed."
   exit 6
 fi
 
 # count the number of backup files eligible for deletion and output
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Cleaning up old backups..."
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Cleaning up old backups..."
 lines=$(find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name "${backup_name}-settings-*.json" -o -name 'settings-*.json' \) -mtime +"$((backup_days - 1))" | wc -l)
-if [ $lines -eq 0 ]; then 
-	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-	echo $TIMESTAMP $lines old backups found, skipping...
+if [ "$lines" -eq 0 ]; then 
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "$lines old backups found, skipping..."
 else 
-	echo  $TIMESTAMP $lines old backups found, deleting...
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "$lines old backups found, deleting..."
 	#remove backup files older than N days
 	find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name "${backup_name}-settings-*.json" -o -name 'settings-*.json' \) -mtime +"$((backup_days - 1))" -exec rm -f {} \;
 fi
 #copy backups to different location (optional)
 if [ "$copy_backup" == "yes" ]; then
-	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-	echo $TIMESTAMP "Copying backup and settings to remote share"
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "Copying backup and settings to remote share"
 	cp "$backup_path"/* "$external_backup_path"/
 fi
 
@@ -238,5 +239,5 @@ fi
 # END OF RESTART SECTION
 
 # END OF SCRIPT
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Housekeeping completed"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Housekeeping completed"
