@@ -43,7 +43,7 @@ deactivate_licenses() {
   while IFS= read -r id; do
     [[ -z ${id} ]] && continue
     echo "===> Deactivating license fulfillment key: ${id}"
-    if ! "${serveractutil_exe}" -return "${id}" -comm soap -reason 1 -commServer "${licensing_url}"; then
+    if ! "${serveractutil_exe}" -return "${id}" -comm soap -reason 1 -commServer "${licensing_url}" < /dev/null; then
       echo "ERROR: failed to deactivate license fulfillment key: ${id}" >&2
       failed=1
     fi
