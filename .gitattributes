@@ -1,2 +1,10 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Batch files are stored with CRLF so clones, zip and raw downloads all work in cmd.exe
+*.cmd -text
+*.bat -text
+
+# Shell scripts must stay LF
+*.bash text eol=lf
+*.sh text eol=lf
