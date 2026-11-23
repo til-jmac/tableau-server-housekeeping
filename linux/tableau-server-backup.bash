@@ -21,7 +21,7 @@
 # Set some variables - you should change these to match your own environment
 
 # Set the date how we want it
-DATE=`date '+%d-%m-%Y'`
+DATE=`date '+%Y-%m-%d'`
 # Grab the current datetime for timestamping the log entries
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 # The OS group whose members are allowed to run tsm commands
@@ -105,15 +105,6 @@ fi
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "The path for storing backups is $backup_path" 
 
-#export current settings
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Exporting current settings..."
-tsm settings export -f "$backup_path/settings-$DATE.json"
-if [ $? -ne 0 ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Settings export failed."
-  exit 6
-fi
 #create current backup
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Backup up Tableau Server data..."
@@ -124,16 +115,26 @@ if [ $? -ne 0 ]; then
   exit 7
 fi
 
+#export current settings
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+echo $TIMESTAMP "Exporting current settings..."
+tsm settings export -f "$backup_path/${backup_name}-settings-$DATE.json"
+if [ $? -ne 0 ]; then
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "ERROR: Settings export failed."
+  exit 6
+fi
+
 # count the number of backup files eligible for deletion and output 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up old backups..."
-lines=$(find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name 'settings-*.json' \) -mtime +"$backup_days" | wc -l)
+lines=$(find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name "${backup_name}-settings-*.json" -o -name 'settings-*.json' \) -mtime +"$((backup_days - 1))" | wc -l)
 if [ $lines -eq 0 ]; then 
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP $lines old backups found, skipping...
 else echo  $TIMESTAMP $lines old backups found, deleting...
 	#remove backup files older than N days
-	find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name 'settings-*.json' \) -mtime +"$backup_days" -exec rm -f {} \;
+	find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name "${backup_name}-settings-*.json" -o -name 'settings-*.json' \) -mtime +"$((backup_days - 1))" -exec rm -f {} \;
 fi
 #copy backups to different location (optional)
 if [ "$copy_backup" == "yes" ]; then
