@@ -24,6 +24,8 @@
 DATE=`date '+%d-%m-%Y'`
 # Grab the current datetime for timestamping the log entries
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+# The OS group whose members are allowed to run tsm commands
+tsm_group="tsmadmin"
 # Do you want to copy your backups to another location after completion?
 copy_backup="no"
 # If yes to above, where do you want to copy them? 
@@ -76,9 +78,9 @@ check_tsm_prerequisites() {
   echo $TIMESTAMP "TSM validation completed successfully."
 }
 
-# Verify user is member of tsmadmin group or root
-if ! (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]); then
-	echo "ERROR: Script must be run as a member of the tsmadmin group or as root."
+# Verify user is member of the TSM group or root
+if ! (id -nG | tr ' ' '\n' | grep -qx "$tsm_group" || [ ${EUID} -eq 0 ]); then
+	echo "ERROR: Script must be run as a member of the $tsm_group group or as root."
 	exit 1
 fi
 
