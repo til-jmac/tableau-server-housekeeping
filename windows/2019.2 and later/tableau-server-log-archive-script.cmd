@@ -57,12 +57,20 @@ IF NOT DEFINED archivedays (
 	GOTO invalid_args
 	)
 :: Days must be a positive whole number. FOR /F with digits as delimiters returns a token only if a non-digit is present.
-:: The leading 1 stops a value starting with ; being skipped as a comment line. The quotes keep characters special to cmd inert.
+:: The leading 1 and eol=0 stop a value starting with ; being skipped as a comment line. eol is a digit other than the
+:: leading one, so neither the whole string nor a token of non-digits can start with it. The quotes keep characters special to cmd inert.
 SET "days_invalid="
-FOR /F "delims=0123456789" %%A IN ("1%archivedays%") DO SET "days_invalid=1"
+FOR /F "eol=0 delims=0123456789" %%A IN ("1%archivedays%") DO SET "days_invalid=1"
 IF "%archivedays:~0,1%"=="0" SET "days_invalid=1"
 IF DEFINED days_invalid (
 	ECHO ERROR: The retention period must be a whole number of days, 1 or more. Cancelling.
+	GOTO invalid_args
+	)
+:: FORFILES accepts at most 32768 days. Check the length first so the numeric comparison never sees a number that overflows.
+IF NOT "%archivedays:~5%"=="" SET "days_invalid=1"
+IF NOT DEFINED days_invalid IF %archivedays% GTR 32768 SET "days_invalid=1"
+IF DEFINED days_invalid (
+	ECHO ERROR: The retention period cannot be more than 32768 days. Cancelling.
 	GOTO invalid_args
 	)
 
@@ -125,7 +133,7 @@ ECHO %archivepath%
 :: First we archive the logs
 :archive
 ECHO %date% %time% : Archiving Tableau Server log files
-:: -o overwrites an existing archive of the same name. The explicit .zip extension keeps the logs-*.zip retention mask matching.
+:: -o overwrites an existing archive of the same name. The explicit .zip extension keeps the logs-????-??-??.zip retention mask matching.
 CALL tsm maintenance ziplogs -o -f logs-%mydate%.zip
 if %ERRORLEVEL% NEQ 0 (
   ECHO %date% %time% : ERROR: Log archive operation failed with exit code %ERRORLEVEL%
@@ -133,12 +141,13 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :: Now that the new log archive has succeeded, remove log archives older than N days
-:: Only logs-*.zip files this script creates in the log archive directory itself are matched, subfolders are not searched
+:: Only logs-YYYY-MM-DD.zip files this script creates in the log archive directory itself are matched, subfolders are not searched
+:: FORFILES also returns matching directories and junctions, and del on one deletes the files inside it, so only files are deleted
 :: Running this last means the newest archive always survives
 :: FORFILES reports "No files found" as an error when nothing is old enough, which is normal, so hide only that message
 :delete_old_files
 ECHO %date% %time% : Cleaning out archive files older than %archivedays% days
-FORFILES /P "%archivepath%" /M "logs-*.zip" /D -%archivedays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
+FORFILES /P "%archivepath%" /M "logs-????-??-??.zip" /D -%archivedays% /C "cmd /c if @isdir==FALSE del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :end_msg
 ECHO %date% %time% : Log archival completed successfully.
@@ -158,7 +167,7 @@ EXIT /B 10
 ECHO Usage:
 ECHO tableau-server-log-archive-script.cmd -d ^<days^>
 ECHO Global parameters (use in sequence):
-ECHO 		-d,--days 		Delete log archives older than N days, N a whole number 1 or more. Only files named
-ECHO 		          		logs-*.zip in the log archive path are deleted
+ECHO 		-d,--days 		Delete log archives older than N days, N a whole number from 1 to 32768. Only files named
+ECHO 		          		logs-YYYY-MM-DD.zip in the log archive path are deleted
 ECHO 		-h,--help 		Show this help
 GOTO :EOF

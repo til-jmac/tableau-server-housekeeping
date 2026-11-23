@@ -46,7 +46,6 @@ GOTO invalid_args
 
 :name_arg
 SET "filename=%~2"
-ECHO %date% %time% : Setting the filename to: "%filename%"
 SHIFT
 SHIFT
 GOTO parse_command_line_params
@@ -73,6 +72,17 @@ IF NOT DEFINED filename (
 	ECHO ERROR: Please specify a valid filename. Cancelling.
 	GOTO invalid_args
 	)
+:: The name is used in file paths and FORFILES masks, so allow only letters, digits, underscore and hyphen.
+:: FOR /F with the allowed characters as delimiters returns a token only if another character is present.
+:: The leading a and eol=_ stop a value starting with ; being skipped as a comment line. eol is an allowed character
+:: other than the leading one, so neither the whole string nor a token of disallowed characters can start with it.
+SET "name_invalid="
+FOR /F "eol=_ delims=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-" %%A IN ("a%filename%") DO SET "name_invalid=1"
+IF DEFINED name_invalid (
+	ECHO ERROR: The filename may only contain letters, digits, underscore and hyphen. Cancelling.
+	GOTO invalid_args
+	)
+ECHO %date% %time% : Setting the filename to: "%filename%"
 
 :check_retention_period
 IF NOT DEFINED backupdays (
@@ -80,12 +90,20 @@ IF NOT DEFINED backupdays (
 	GOTO invalid_args
 	)
 :: Days must be a positive whole number. FOR /F with digits as delimiters returns a token only if a non-digit is present.
-:: The leading 1 stops a value starting with ; being skipped as a comment line. The quotes keep characters special to cmd inert.
+:: The leading 1 and eol=0 stop a value starting with ; being skipped as a comment line. eol is a digit other than the
+:: leading one, so neither the whole string nor a token of non-digits can start with it. The quotes keep characters special to cmd inert.
 SET "days_invalid="
-FOR /F "delims=0123456789" %%A IN ("1%backupdays%") DO SET "days_invalid=1"
+FOR /F "eol=0 delims=0123456789" %%A IN ("1%backupdays%") DO SET "days_invalid=1"
 IF "%backupdays:~0,1%"=="0" SET "days_invalid=1"
 IF DEFINED days_invalid (
 	ECHO ERROR: The retention period must be a whole number of days, 1 or more. Cancelling.
+	GOTO invalid_args
+	)
+:: FORFILES accepts at most 32768 days. Check the length first so the numeric comparison never sees a number that overflows.
+IF NOT "%backupdays:~5%"=="" SET "days_invalid=1"
+IF NOT DEFINED days_invalid IF %backupdays% GTR 32768 SET "days_invalid=1"
+IF DEFINED days_invalid (
+	ECHO ERROR: The retention period cannot be more than 32768 days. Cancelling.
 	GOTO invalid_args
 	)
 
@@ -203,17 +221,19 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :: Now that the new backup and settings export have succeeded, remove backup files older than N days
-:: Only files this script creates (named after -n) in the backup directory itself are matched, subfolders are not searched
+:: Only files this script creates (-n name then the date) in the backup directory itself are matched, subfolders are not searched
+:: The mask is anchored to the date so that, for example, -n prod does not match prod-weekly-YYYY-MM-DD.tsbak
+:: FORFILES also returns matching directories and junctions, and del on one deletes the files inside it, so only files are deleted
 :: Running this last means the newest backup always survives
 :: FORFILES reports "No files found" as an error when nothing is old enough, which is normal, so hide only that message
 :delete_old_files
 ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
-FORFILES /P "%backuppath%" /M "%filename%-*.tsbak" /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
+FORFILES /P "%backuppath%" /M "%filename%-????-??-??.tsbak" /D -%backupdays% /C "cmd /c if @isdir==FALSE del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :: Do the same for the settings .json files
 :delete_old_settings_files
 ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
-FORFILES /P "%backuppath%" /M "%filename%-settings-*.json" /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
+FORFILES /P "%backuppath%" /M "%filename%-settings-????-??-??.json" /D -%backupdays% /C "cmd /c if @isdir==FALSE del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :end_msg
 ECHO %date% %time% : Backup completed successfully.
@@ -233,9 +253,9 @@ EXIT /B 10
 ECHO Usage:
 ECHO tableau-server-backup-script.cmd -n ^<filename^> -d ^<days^> -o ^<true/false^>
 ECHO Required parameters (use in sequence):
-ECHO 		-n,--name 		Name of the backup file (no spaces, periods or funny characters)
-ECHO 		-d,--days 		Delete backups older than N days, N a whole number 1 or more. Only files named ^<filename^>-*.tsbak
-ECHO 		          		and ^<filename^>-settings-*.json in the backup location are deleted
+ECHO 		-n,--name 		Name of the backup file. Letters, digits, underscore and hyphen only
+ECHO 		-d,--days 		Delete backups older than N days, N a whole number from 1 to 32768. Only files named
+ECHO 		          		^<filename^>-YYYY-MM-DD.tsbak and ^<filename^>-settings-YYYY-MM-DD.json in the backup location are deleted
 ECHO 		-o,--overwrite 		Overwrite any existing backup with the same name (takes appended date into account)
 ECHO 		-h,--help 		Show this help
 GOTO :EOF
