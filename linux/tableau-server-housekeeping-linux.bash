@@ -43,8 +43,6 @@ copy_logs="no"
 external_log_path="/tmp/log-archives/"
 # How many days to you want to keep archived log files for?
 log_days="7"
-# What do you want to name your logs file? (will automatically append current date to this filename)
-log_name="logs"
 
 # END OF VARIABLES SECTION
 
@@ -143,7 +141,7 @@ if [ "$logs_archived" == "yes" ]; then
 	# count the number of log files eligible for deletion and output 
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "Cleaning up old log files..."
-	lines=$(find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$((log_days - 1))" | wc -l)
+	lines=$(find "$log_path" -maxdepth 1 -type f -name 'logs-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].zip' -mtime +"$((log_days - 1))" | wc -l)
 	if [ "$lines" -eq 0 ]; then 
 		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 		echo "$TIMESTAMP" "$lines found, skipping..."
@@ -151,7 +149,7 @@ if [ "$logs_archived" == "yes" ]; then
 		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 		echo "$TIMESTAMP" "$lines found, deleting..."
 		#remove log archives older than the specified number of days
-		find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$((log_days - 1))" -exec rm {} \;
+		find "$log_path" -maxdepth 1 -type f -name 'logs-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].zip' -mtime +"$((log_days - 1))" -exec rm {} \;
 		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 		echo "$TIMESTAMP" "Cleaning up completed."		
 	fi
@@ -224,7 +222,7 @@ fi
 # count the number of backup files eligible for deletion and output
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 echo "$TIMESTAMP" "Cleaning up old backups..."
-lines=$(find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name "${backup_name}-settings-*.json" -o -name 'settings-*.json' \) -mtime +"$((backup_days - 1))" | wc -l)
+lines=$(find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].tsbak" -o -name "${backup_name}-settings-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json" -o -name 'settings-[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9].json' -o -name 'settings-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json' \) -mtime +"$((backup_days - 1))" | wc -l)
 if [ "$lines" -eq 0 ]; then 
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "$lines old backups found, skipping..."
@@ -232,7 +230,7 @@ else
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "$lines old backups found, deleting..."
 	#remove backup files older than N days
-	find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name "${backup_name}-settings-*.json" -o -name 'settings-*.json' \) -mtime +"$((backup_days - 1))" -exec rm -f {} \;
+	find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].tsbak" -o -name "${backup_name}-settings-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json" -o -name 'settings-[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9].json' -o -name 'settings-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json' \) -mtime +"$((backup_days - 1))" -exec rm -f {} \;
 fi
 #copy backups to different location (optional)
 if [ "$copy_backup" == "yes" ]; then

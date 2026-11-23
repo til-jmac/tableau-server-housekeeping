@@ -131,7 +131,7 @@ fi
 # count the number of log files eligible for deletion and output 
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 echo "$TIMESTAMP" "Cleaning up old log files..."
-lines=$(find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$((log_days - 1))" | wc -l)
+lines=$(find "$log_path" -maxdepth 1 -type f -name 'logs-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].zip' -mtime +"$((log_days - 1))" | wc -l)
 if [ "$lines" -eq 0 ]; then 
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "$lines found, skipping..."
@@ -139,7 +139,7 @@ else
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "$lines found, deleting..."
 	#remove log archives older than the specified number of days
-	find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$((log_days - 1))" -exec rm {} \;
+	find "$log_path" -maxdepth 1 -type f -name 'logs-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].zip' -mtime +"$((log_days - 1))" -exec rm {} \;
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "Old log cleanup completed."		
 fi

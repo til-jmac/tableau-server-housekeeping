@@ -128,7 +128,7 @@ fi
 # count the number of backup files eligible for deletion and output 
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 echo "$TIMESTAMP" "Cleaning up old backups..."
-lines=$(find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name "${backup_name}-settings-*.json" -o -name 'settings-*.json' \) -mtime +"$((backup_days - 1))" | wc -l)
+lines=$(find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].tsbak" -o -name "${backup_name}-settings-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json" -o -name 'settings-[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9].json' -o -name 'settings-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json' \) -mtime +"$((backup_days - 1))" | wc -l)
 if [ "$lines" -eq 0 ]; then 
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "$lines old backups found, skipping..."
@@ -136,7 +136,7 @@ else
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "$lines old backups found, deleting..."
 	#remove backup files older than N days
-	find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-*.tsbak" -o -name "${backup_name}-settings-*.json" -o -name 'settings-*.json' \) -mtime +"$((backup_days - 1))" -exec rm -f {} \;
+	find "$backup_path" -maxdepth 1 -type f \( -name "${backup_name}-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].tsbak" -o -name "${backup_name}-settings-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json" -o -name 'settings-[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9].json' -o -name 'settings-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json' \) -mtime +"$((backup_days - 1))" -exec rm -f {} \;
 fi
 #copy backups to different location (optional)
 if [ "$copy_backup" == "yes" ]; then
