@@ -111,6 +111,9 @@ fi
 # Run TSM validation
 check_tsm_prerequisites
 
+# Failures that must not block the backup are remembered here and returned at the end
+exit_code=0
+
 # LOGS SECTION
 
 # get the path to the log archive folder
@@ -129,32 +132,37 @@ echo "$TIMESTAMP" "Archiving current logs..."
 tsm maintenance ziplogs -t -o -f "logs-$DATE.zip"
 if [ $? -ne 0 ]; then
   TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-  echo "$TIMESTAMP" "ERROR: Log archive operation failed."
-  exit 6
+  echo "$TIMESTAMP" "ERROR: Log archive operation failed. Skipping log retention, copy and Tableau Server cleanup, continuing with backup."
+  exit_code=6
+  logs_archived="no"
+else
+  logs_archived="yes"
 fi
 
-# count the number of log files eligible for deletion and output 
-TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-echo "$TIMESTAMP" "Cleaning up old log files..."
-lines=$(find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$((log_days - 1))" | wc -l)
-if [ "$lines" -eq 0 ]; then 
+if [ "$logs_archived" == "yes" ]; then
+	# count the number of log files eligible for deletion and output 
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-	echo "$TIMESTAMP" "$lines found, skipping..."
-else 
-	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-	echo "$TIMESTAMP" "$lines found, deleting..."
-	#remove log archives older than the specified number of days
-	find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$((log_days - 1))" -exec rm {} \;
-	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-	echo "$TIMESTAMP" "Cleaning up completed."		
-fi
-#copy logs to different location (optional)
-if [ "$copy_logs" == "yes" ]; then
-	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-	echo "$TIMESTAMP" "Copying logs to remote share"
-	if ! cp "$log_path/logs-$DATE.zip" "$external_log_path/"; then
+	echo "$TIMESTAMP" "Cleaning up old log files..."
+	lines=$(find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$((log_days - 1))" | wc -l)
+	if [ "$lines" -eq 0 ]; then 
 		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-		echo "$TIMESTAMP" "ERROR: Failed to copy log archive to $external_log_path (continuing)."
+		echo "$TIMESTAMP" "$lines found, skipping..."
+	else 
+		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+		echo "$TIMESTAMP" "$lines found, deleting..."
+		#remove log archives older than the specified number of days
+		find "$log_path" -maxdepth 1 -type f -name 'logs-*.zip' -mtime +"$((log_days - 1))" -exec rm {} \;
+		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+		echo "$TIMESTAMP" "Cleaning up completed."		
+	fi
+	#copy logs to different location (optional)
+	if [ "$copy_logs" == "yes" ]; then
+		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+		echo "$TIMESTAMP" "Copying logs to remote share"
+		if ! cp "$log_path/logs-$DATE.zip" "$external_log_path/"; then
+			TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+			echo "$TIMESTAMP" "ERROR: Failed to copy log archive to $external_log_path (continuing)."
+		fi
 	fi
 fi
 
@@ -164,13 +172,18 @@ fi
 # CLEANUP SECTION
 
 # cleanup old logs and temp files 
-TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-echo "$TIMESTAMP" "Cleaning up Tableau Server..."
-tsm maintenance cleanup -l -t
-if [ $? -ne 0 ]; then
+if [ "$logs_archived" != "yes" ]; then
   TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-  echo "$TIMESTAMP" "ERROR: Cleanup operation failed."
-  exit 8
+  echo "$TIMESTAMP" "Skipping Tableau Server cleanup because the log archive failed."
+else
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "Cleaning up Tableau Server..."
+  tsm maintenance cleanup -l -t
+  if [ $? -ne 0 ]; then
+    TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "$TIMESTAMP" "ERROR: Cleanup operation failed. Continuing with backup."
+    [ "$exit_code" -eq 0 ] && exit_code=8
+  fi
 fi
 
 # END OF CLEANUP SECTION
@@ -240,4 +253,8 @@ fi
 
 # END OF SCRIPT
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+if [ "$exit_code" -ne 0 ]; then
+  echo "$TIMESTAMP" "Housekeeping completed with errors (exit code $exit_code)"
+  exit "$exit_code"
+fi
 echo "$TIMESTAMP" "Housekeeping completed"
