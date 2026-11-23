@@ -63,7 +63,7 @@ sudo ./setup.bash
 Parameters can be given in any order. `-n` and `-d` are required for backup, `-d` for log archive; `-o` defaults to `false`.
 
 ```cmd
-tableau-server-backup-script.cmd -n <name> -d <days> -o <true/false>
+tableau-server-backup-script.cmd -n <name> -d <days> [-o <true/false>]
 tableau-server-log-archive-script.cmd -d <days>
 tableau-server-cleanup-script.cmd
 ```
