@@ -112,13 +112,7 @@ ECHO The corrected archive path is now:
 ECHO %archivepath%
 
 :: Now let's actually do some stuff
-:: Check for previous log archives and remove files older than N days
-:: FORFILES reports "No files found" as an error when nothing is old enough, which is normal, so hide only that message
-:delete_old_files
-ECHO %date% %time% : Cleaning out archive files older than %archivedays% days
-FORFILES /P "%archivepath%" /S /M *.zip /D -%archivedays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
-
-:: Then we archive the logs
+:: First we archive the logs
 :archive
 ECHO %date% %time% : Archiving Tableau Server log files
 CALL tsm maintenance ziplogs -a -o -f logs-%mydate%
@@ -126,6 +120,13 @@ if %ERRORLEVEL% NEQ 0 (
   ECHO %date% %time% : ERROR: Log archive operation failed with exit code %ERRORLEVEL%
   EXIT /B 6
 )
+
+:: Now that the new log archive has succeeded, remove log archives older than N days
+:: Running this last means the newest archive always survives
+:: FORFILES reports "No files found" as an error when nothing is old enough, which is normal, so hide only that message
+:delete_old_files
+ECHO %date% %time% : Cleaning out archive files older than %archivedays% days
+FORFILES /P "%archivepath%" /S /M *.zip /D -%archivedays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :end_msg
 ECHO %date% %time% : Log archival completed successfully.

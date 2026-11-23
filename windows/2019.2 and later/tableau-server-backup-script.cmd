@@ -170,25 +170,14 @@ GOTO no_overwrite
 ECHO %date% %time% : Overwrite was requested. Cleaning out any existing files with the same name
 IF EXIST "%backuppath%\%filename%-%mydate%.tsbak" DEL /F "%backuppath%\%filename%-%mydate%.tsbak" >nul 2>&1
 IF EXIST "%backuppath%\%filename%-settings-%mydate%.json" DEL /F "%backuppath%\%filename%-settings-%mydate%.json" >nul 2>&1
-GOTO delete_old_files
+GOTO bakup
 
 :: It wasn't used so let's just go ahead and backup
 :no_overwrite
 ECHO %date% %time% : Overwrite was not requested, proceeding
 
 :: Now let's actually do some stuff
-:: Check for previous backups and remove backup files older than N days
-:: FORFILES reports "No files found" as an error when nothing is old enough, which is normal, so hide only that message
-:delete_old_files
-ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
-FORFILES /P "%backuppath%" /S /M *.tsbak /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
-
-:: Do the same for settings.json files
-:delete_old_settings_files
-ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
-FORFILES /P "%backuppath%" /S /M *.json /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
-
-:: Then we take the backup
+:: First we take the backup
 :bakup
 ECHO %date% %time% : Backing up Tableau Server data
 CALL tsm maintenance backup -f "%filename%" -d
@@ -204,6 +193,18 @@ if %ERRORLEVEL% NEQ 0 (
   ECHO %date% %time% : ERROR: Settings export failed with exit code %ERRORLEVEL%
   EXIT /B 7
 )
+
+:: Now that the new backup and settings export have succeeded, remove backup files older than N days
+:: Running this last means the newest backup always survives
+:: FORFILES reports "No files found" as an error when nothing is old enough, which is normal, so hide only that message
+:delete_old_files
+ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
+FORFILES /P "%backuppath%" /S /M *.tsbak /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
+
+:: Do the same for settings.json files
+:delete_old_settings_files
+ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
+FORFILES /P "%backuppath%" /S /M *.json /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :end_msg
 ECHO %date% %time% : Backup completed successfully.
