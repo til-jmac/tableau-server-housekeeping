@@ -16,7 +16,7 @@ current=""
 
 # run_member <cmd...>: run as the current user in group tsmadmin with the stub tsm first on PATH
 run_member() {
-  sudo -u "$USER" -g tsmadmin env "PATH=$stubs:$PATH" "STUB_BACKUP_DIR=$b" "STUB_ARCHIVE_DIR=$a" "STUB_FAIL=${STUB_FAIL:-}" "$@"
+  sudo -u "$USER" -g tsmadmin env "PATH=$stubs:$PATH" "STUB_BACKUP_DIR=$b" "STUB_ARCHIVE_DIR=$a" "STUB_FAIL=${STUB_FAIL:-}" bash "$@"
 }
 
 case_start() {
@@ -49,7 +49,7 @@ check "current user is a member of tsmadmin" bash -c 'getent group tsmadmin | gr
 
 # group check: not root and not in tsmadmin gives exit 1
 case_start group
-sudo setpriv --reuid="$(id -u)" --regid="$(id -g)" --clear-groups env "PATH=$stubs:$PATH" "STUB_BACKUP_DIR=$b" "STUB_ARCHIVE_DIR=$a" "$backup" >&2
+sudo setpriv --reuid="$(id -u)" --regid="$(id -g)" --clear-groups env "PATH=$stubs:$PATH" "STUB_BACKUP_DIR=$b" "STUB_ARCHIVE_DIR=$a" bash "$backup" >&2
 expect "backup as non-member" 1 $?
 
 # backup
