@@ -7,7 +7,9 @@
 :: So a process is required to firstly archive old log files, then clean up the current logs to free up disk space.
 :: This script helps with the second part, by cleaning out the current, active logs.
 :: To archive these logs prior to deletion, you will want to run a ziplogs command, I have a script for that too.
-:: 1) I would recommend you schedule this script to run once a week, immediately following the log archival script
+:: 1) I would recommend you schedule this script to run daily, immediately following the log archival script
+:: 1a) Why daily: ziplogs collects about the last two days of logs by default and cleanup -l removes logs older than one day,
+::     so a weekly schedule loses most logs before they are archived.
 :: 2) Use this script in conjunction with my log archival and backup scripts, which you can find at the Github link above
 :: 3) Run this script with elevated privileges as the user that has permissions to run TSM
 :: 4) You MUST input all command line parameters in the order specified, or the script will fail

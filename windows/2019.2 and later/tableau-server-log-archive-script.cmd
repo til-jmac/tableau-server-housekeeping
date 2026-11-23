@@ -7,7 +7,9 @@
 :: So a process is required to firstly archive old log files, then clean up the current logs to free up disk space.
 :: This script helps with the first part, by archiving old log files. This script will also clean out the ARCHiVED logs older than N days.
 :: To clean out the current, active log files, you will want to run the cleanup command, I have a script for that too.
-:: 1) I would recommend you schedule this script to run once a week
+:: 1) I would recommend you schedule this script to run daily, immediately before the cleanup script
+:: 1a) Why daily: ziplogs collects about the last two days of logs by default and cleanup -l removes logs older than one day,
+::     so a weekly schedule loses most logs before they are archived.
 :: 2) Use this script in conjunction with my backup and cleanup scripts, which you can find at the Github link above
 :: 3) Run this script with elevated privileges as the user that has permissions to run TSM
 :: 4) You MUST input all command line parameters in the order specified, or the script will fail
@@ -124,7 +126,8 @@ ECHO %archivepath%
 :: First we archive the logs
 :archive
 ECHO %date% %time% : Archiving Tableau Server log files
-CALL tsm maintenance ziplogs -a -o -f logs-%mydate%
+:: -o overwrites an existing archive of the same name. The explicit .zip extension keeps the logs-*.zip retention mask matching.
+CALL tsm maintenance ziplogs -o -f logs-%mydate%.zip
 if %ERRORLEVEL% NEQ 0 (
   ECHO %date% %time% : ERROR: Log archive operation failed with exit code %ERRORLEVEL%
   EXIT /B 6
