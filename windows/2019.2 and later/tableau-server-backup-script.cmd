@@ -131,20 +131,18 @@ IF NOT DEFINED mydate (
 :: SET script_dir=%~dp0
 
 :: Grab the location of the backup directory
-:: tsm output goes to a temp file so we can check its exit code and show its error message on failure
+:: The first call only checks the exit code. On failure tsm runs again unredirected so its own error message is shown
 :set_backup_dir
 ECHO %date% %time% : Getting the location of the default backup directory
-SET "tmpfile=%TEMP%\tableau-backup-script-%RANDOM%.tmp"
-CALL tsm configuration get -k basefilepath.backuprestore > "%tmpfile%" 2>&1
+CALL tsm configuration get -k basefilepath.backuprestore >NUL 2>&1
 if %ERRORLEVEL% NEQ 0 (
   ECHO %date% %time% : ERROR: Cannot read basefilepath.backuprestore from TSM configuration. Please ensure you have proper TSM permissions. TSM output:
-  TYPE "%tmpfile%"
-  DEL /F "%tmpfile%" >NUL 2>&1
+  CALL tsm configuration get -k basefilepath.backuprestore
   EXIT /B 3
 )
+:: FOR /F runs tsm in a child cmd, so no CALL is needed, and only stdout is read
 SET "backuppath="
-FOR /F "usebackq tokens=*" %%F IN ("%tmpfile%") DO SET "backuppath=%%F"
-DEL /F "%tmpfile%" >NUL 2>&1
+FOR /F "usebackq tokens=*" %%F IN (`tsm configuration get -k basefilepath.backuprestore`) DO SET "backuppath=%%F"
 IF NOT DEFINED backuppath (
   ECHO %date% %time% : ERROR: Backup directory path is empty. Please check TSM configuration.
   EXIT /B 5

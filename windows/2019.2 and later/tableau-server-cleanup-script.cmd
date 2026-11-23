@@ -57,17 +57,14 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :: Check if TSM status is accessible
-:: tsm output goes to a temp file so we can show its error message on failure
+:: The first call only checks the exit code. On failure tsm runs again unredirected so its own error message is shown
 ECHO %date% %time% : Validating TSM status access
-SET "tmpfile=%TEMP%\tableau-cleanup-script-%RANDOM%.tmp"
-CALL tsm status > "%tmpfile%" 2>&1
+CALL tsm status >NUL 2>&1
 if %ERRORLEVEL% NEQ 0 (
   ECHO %date% %time% : ERROR: Cannot access TSM status. Please ensure you have proper TSM permissions. TSM output:
-  TYPE "%tmpfile%"
-  DEL /F "%tmpfile%" >NUL 2>&1
+  CALL tsm status
   EXIT /B 3
 )
-DEL /F "%tmpfile%" >NUL 2>&1
 
 :: Then we clean up the logs and temp files
 :cleanup
