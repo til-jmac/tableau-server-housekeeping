@@ -117,9 +117,10 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :: Let's grab a consistent date in the same format that Tableau Server writes the date to the end of the backup file name
+:: InvariantCulture forces the Gregorian calendar, so a non-Gregorian system calendar cannot change the year
 :set_date
 SET "mydate="
-FOR /F %%a IN ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"') DO SET "mydate=%%a"
+FOR /F "usebackq" %%a IN (`powershell -NoProfile -Command "(Get-Date).ToString('yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture)"`) DO SET "mydate=%%a"
 IF NOT DEFINED mydate (
   ECHO %date% %time% : ERROR: Could not determine the current date using PowerShell.
   EXIT /B 8
