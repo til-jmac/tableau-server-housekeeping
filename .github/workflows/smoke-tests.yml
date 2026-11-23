@@ -1,0 +1,62 @@
+name: Smoke tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  line-endings:
+    name: CRLF in .cmd and .bat
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every line of every tracked .cmd/.bat ends in CRLF
+        run: |
+          status=0
+          while IFS= read -r -d '' f; do
+            if perl -0777 -ne 'exit(/(?<!\r)\n/ || /\r(?!\n)/ ? 1 : 0)' "$f"; then
+              echo "ok:   $f"
+            else
+              echo "FAIL: $f has a bare LF or bare CR"; status=1
+            fi
+          done < <(git ls-files -z '*.cmd' '*.bat')
+          exit $status
+
+  windows:
+    name: Windows scripts against stub tsm
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report elevation
+        shell: cmd
+        run: |
+          fltmc >NUL 2>&1 && (echo Elevated: yes) || (echo Elevated: NO & exit /b 1)
+          ver
+          powershell -NoProfile -Command "$PSVersionTable.PSVersion.ToString()"
+      - name: Run tests
+        shell: pwsh
+        run: ./tests/windows/run-tests.ps1
+
+  linux:
+    name: Linux scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n
+        run: |
+          for f in linux/*.bash; do bash -n "$f" && echo "ok: $f"; done
+      - name: shellcheck (informational, all severities)
+        continue-on-error: true
+        run: shellcheck --version && shellcheck -S style linux/*.bash
+      - name: shellcheck (gate)
+        run: shellcheck -S warning linux/*.bash
+      - name: Arrange tsmadmin group and profile script
+        run: |
+          sudo groupadd -f tsmadmin
+          sudo usermod -aG tsmadmin "$(id -un)"
+          echo '# CI stub for the Tableau Server environment' | sudo tee /etc/profile.d/tableau_server.sh > /dev/null
+      - name: Run tests
+        run: ./tests/linux/run-tests.sh
