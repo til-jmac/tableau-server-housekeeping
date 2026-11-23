@@ -3,8 +3,8 @@
 :: Authored by Jonathan MacDonald
 :: Last updated 14/08/2020
 :: How to use this script
-:: By default, Tableau Server does not automatically archive/delete its log files. 
-:: So a process is required to firstly archive old log files, then clean up the current logs to free up disk space. 
+:: By default, Tableau Server does not automatically archive/delete its log files.
+:: So a process is required to firstly archive old log files, then clean up the current logs to free up disk space.
 :: This script helps with the second part, by cleaning out the current, active logs.
 :: To archive these logs prior to deletion, you will want to run a ziplogs command, I have a script for that too.
 :: 1) I would recommend you schedule this script to run once a week, immediately following the log archival script
@@ -15,8 +15,27 @@
 ::    Modify the script below if you would like to change those options
 :: Give me a shout on Twitter @macdonaldj for questions, comments or feedback
 
+:: Exit codes:
+::   0  Success (or help shown)
+::   1  Not run as Administrator
+::   2  TSM not available
+::   3  Cannot read TSM status
+::   9  Cleanup failed
+::   10 Invalid arguments
+
 @echo OFF
+SETLOCAL
 cls
+
+:: Parses command line parameters
+:parse_command_line_params
+IF "%~1"=="" GOTO end_parse
+IF "%~1"=="-h" GOTO show_help
+IF "%~1"=="--help" GOTO show_help
+ECHO ERROR: Unrecognised argument: "%~1"
+GOTO invalid_args
+
+:end_parse
 
 :: Checks that the script is being run with Admin rights. fltmc needs elevation but, unlike NET SESSION, not the Server service.
 :check_admin
@@ -36,20 +55,17 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :: Check if TSM status is accessible
+:: tsm output goes to a temp file so we can show its error message on failure
 ECHO %date% %time% : Validating TSM status access
-CALL tsm status >NUL 2>&1
+SET "tmpfile=%TEMP%\tableau-cleanup-script-%RANDOM%.tmp"
+CALL tsm status > "%tmpfile%" 2>&1
 if %ERRORLEVEL% NEQ 0 (
-  ECHO %date% %time% : ERROR: Cannot access TSM status. Please ensure you have proper TSM permissions.
+  ECHO %date% %time% : ERROR: Cannot access TSM status. Please ensure you have proper TSM permissions. TSM output:
+  TYPE "%tmpfile%"
+  DEL /F "%tmpfile%" >NUL 2>&1
   EXIT /B 3
 )
-
-:: Parses command line parameters
-:parse_command_line_params
-IF "%1"=="" GOTO end_parse
-IF "%1"=="-h" GOTO show_help
-IF "%1"=="--help" GOTO show_help
-
-:end_parse
+DEL /F "%tmpfile%" >NUL 2>&1
 
 :: Then we clean up the logs and temp files
 :cleanup
@@ -57,22 +73,26 @@ ECHO %date% %time% : Cleaning up Tableau Server log and temp files
 CALL tsm maintenance cleanup -l -t
 if %ERRORLEVEL% NEQ 0 (
   ECHO %date% %time% : ERROR: Cleanup operation failed with exit code %ERRORLEVEL%
-  EXIT /B 4
+  EXIT /B 9
 )
 
 :end_msg
-IF %ERRORLEVEL% EQU 0 (
-	ECHO %date% %time% : Cleanup completed successfully. 
-	EXIT /B 0 
-	)
-IF %ERRORLEVEL% GTR 0 (
-	ECHO %date% %time% : Cleanup failed with exit code %ERRORLEVEL%
-	GOTO show_help
-	) 
+ECHO %date% %time% : Cleanup completed successfully.
+EXIT /B 0
 
+:: -h/--help shows usage and exits 0
 :show_help
-ECHO Usage: 
+CALL :print_usage
+EXIT /B 0
+
+:: Invalid arguments show usage and exit 10
+:invalid_args
+CALL :print_usage
+EXIT /B 10
+
+:print_usage
+ECHO Usage:
 ECHO tableau-server-cleanup-script.cmd
 ECHO Global parameters (use in sequence):
-ECHO 		-h,--help 		Show this help 
-EXIT /B 3
+ECHO 		-h,--help 		Show this help
+GOTO :EOF
