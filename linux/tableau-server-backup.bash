@@ -30,8 +30,8 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 tsm_group="tsmadmin"
 # Do you want to copy your backups to another location after completion?
 copy_backup="no"
-# If yes to above, where do you want to copy them? 
-external_backup_path="/tmp/backups/"
+# If yes to above, where do you want to copy them? Must be set to an existing directory when copy_backup is "yes" 
+external_backup_path=""
 # How many days do you want to keep old backup files for? 
 backup_days="2"
 # What do you want to name your backup files? (will automatically append current date to this filename)
@@ -103,6 +103,12 @@ if ! [[ "$backup_days" =~ ^[1-9][0-9]*$ ]]; then
 	exit 8
 fi
 
+# Validate the copy destination when copying is enabled
+if [ "$copy_backup" == "yes" ] && { [ -z "$external_backup_path" ] || [ ! -d "$external_backup_path" ]; }; then
+	echo "ERROR: copy_backup is yes but external_backup_path ('$external_backup_path') is empty or not an existing directory."
+	exit 10
+fi
+
 # Run TSM validation
 check_tsm_prerequisites
 
@@ -155,7 +161,11 @@ fi
 if [ "$copy_backup" == "yes" ]; then
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "Copying backup and settings to remote share"
-	cp "$backup_path"/* "$external_backup_path"/
+	if ! cp "$backup_path"/* "$external_backup_path"/; then
+		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+		echo "$TIMESTAMP" "ERROR: Backup succeeded but copying it to $external_backup_path failed."
+		exit 11
+	fi
 fi
 
 # END OF BACKUP SECTION

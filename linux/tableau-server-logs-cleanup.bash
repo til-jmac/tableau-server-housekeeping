@@ -35,8 +35,8 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 tsm_group="tsmadmin"
 # Do you want to copy your archived logs to another location after completion?
 copy_logs="no"
-# Where do you want to save your archived logs?
-external_log_path="/tmp/log-archives/"
+# Where do you want to save your archived logs? Must be set to an existing directory when copy_logs is "yes"
+external_log_path=""
 # How many days to you want to keep archived log files for?
 log_days="7"
 
@@ -107,8 +107,17 @@ if ! [[ "$log_days" =~ ^[1-9][0-9]*$ ]]; then
 	exit 8
 fi
 
+# Validate the copy destination when copying is enabled
+if [ "$copy_logs" == "yes" ] && { [ -z "$external_log_path" ] || [ ! -d "$external_log_path" ]; }; then
+	echo "ERROR: copy_logs is yes but external_log_path ('$external_log_path') is empty or not an existing directory."
+	exit 10
+fi
+
 # Run TSM validation
 check_tsm_prerequisites
+
+# Failures that must not block the cleanup are remembered here and returned at the end
+exit_code=0
 
 # LOGS SECTION
 
@@ -153,7 +162,8 @@ if [ "$copy_logs" == "yes" ]; then
 	echo "$TIMESTAMP" "Copying logs to remote share"
 	if ! cp "$log_path/logs-$DATE.zip" "$external_log_path/"; then
 		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-		echo "$TIMESTAMP" "ERROR: Failed to copy log archive to $external_log_path (continuing)."
+		echo "$TIMESTAMP" "ERROR: Log archive succeeded but copying it to $external_log_path failed (continuing)."
+		[ "$exit_code" -eq 0 ] && exit_code=11
 	fi
 fi
 
@@ -178,4 +188,8 @@ fi
 
 # END OF SCRIPT
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+if [ "$exit_code" -ne 0 ]; then
+  echo "$TIMESTAMP" "Logs cleanup completed with errors (exit code $exit_code)"
+  exit "$exit_code"
+fi
 echo "$TIMESTAMP" "Housekeeping completed"

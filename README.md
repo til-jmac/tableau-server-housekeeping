@@ -104,9 +104,9 @@ sudo chmod 644 /etc/tableau-server-housekeeping.conf
 | `tsm_group` | all | Group allowed to run the script (default `tsmadmin`) |
 | `backup_name` | backup, housekeeping | Backup name; date is appended |
 | `backup_days` | backup, housekeeping | Retention in days, positive integer |
-| `copy_backup`, `external_backup_path` | backup, housekeeping | Copy backup directory contents (`cp "$backup_path"/*`) to another path |
+| `copy_backup`, `external_backup_path` | backup, housekeeping | Copy backup directory contents to `external_backup_path`. No default: must be an existing directory when `copy_backup="yes"` |
 | `log_days` | housekeeping, logs-cleanup | Archive retention in days, positive integer |
-| `copy_logs`, `external_log_path` | log-archive, housekeeping, logs-cleanup | Copy today's archive to another path |
+| `copy_logs`, `external_log_path` | log-archive, housekeeping, logs-cleanup | Copy today's archive to `external_log_path`. No default: must be an existing directory when `copy_logs="yes"` |
 
 `tableau-server-log-archive.bash` requires the retention days as its single argument, which overrides `log_days` and the settings file:
 ```bash
@@ -152,7 +152,7 @@ Add to the crontab of a `tsm_group` user (`sudo su -l <tsm user> -c "crontab -e"
 0 3 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-log-archive.bash 7 >> /home/<TSM_USER>/tableau-server-log-archive.log 2>&1 && /var/opt/tableau/tableau_server/scripts/tableau-server-cleanup.bash >> /home/<TSM_USER>/tableau-server-cleanup.log 2>&1
 ```
 
-Alternatively schedule `tableau-server-housekeeping-linux.bash` once daily; it runs log archive, cleanup, then backup. A ziplogs failure skips log retention, copy and cleanup; a cleanup failure is logged; both still run the backup and exit non-zero at the end (6 or 8).
+Alternatively schedule `tableau-server-housekeeping-linux.bash` once daily; it runs log archive, cleanup, then backup. A ziplogs failure skips log retention, copy and cleanup; a cleanup failure is logged; both still run the backup and exit non-zero at the end (6, 8 or 13).
 
 ## Exit codes
 
@@ -177,7 +177,7 @@ Windows exit 4 is unused.
 
 ### Linux
 
-In housekeeping-linux, ziplogs failure (6) and cleanup failure (8) are returned at the end, after the backup has run. Codes are unchanged.
+In housekeeping-linux, ziplogs failure (6), cleanup failure (8) and copy failure (13) are returned at the end, after the backup has run.
 
 | Code | backup | log-archive | cleanup | housekeeping-linux | logs-cleanup |
 |------|--------|-------------|---------|--------------------|--------------|
@@ -190,9 +190,11 @@ In housekeeping-linux, ziplogs failure (6) and cleanup failure (8) are returned 
 | 6 | Settings export failed | ziplogs failed | Settings file unsafe or unreadable | ziplogs or settings export failed | ziplogs failed |
 | 7 | Backup failed | Invalid `log_days` | - | Backup failed | Cleanup failed |
 | 8 | Invalid `backup_days` | Settings file unsafe or unreadable | - | Cleanup failed | Invalid `log_days` |
-| 9 | Settings file unsafe or unreadable | - | - | Invalid `backup_days` | Settings file unsafe or unreadable |
-| 10 | - | - | - | Invalid `log_days` | - |
-| 11 | - | - | - | Settings file unsafe or unreadable | - |
+| 9 | Settings file unsafe or unreadable | Copy path missing or not a directory | - | Invalid `backup_days` | Settings file unsafe or unreadable |
+| 10 | Copy path missing or not a directory | Copy failed | - | Invalid `log_days` | Copy path missing or not a directory |
+| 11 | Copy failed | - | - | Settings file unsafe or unreadable | Copy failed |
+| 12 | - | - | - | Copy path missing or not a directory | - |
+| 13 | - | - | - | Copy failed | - |
 
 ## Troubleshooting
 
