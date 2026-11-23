@@ -148,7 +148,12 @@ fi
 # cleanup old logs and temp files 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up Tableau Server..."
-tsm maintenance cleanup -a
+tsm maintenance cleanup -l -t
+if [ $? -ne 0 ]; then
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "ERROR: Cleanup operation failed."
+  exit 8
+fi
 
 # END OF CLEANUP SECTION
 
