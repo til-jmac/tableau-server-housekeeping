@@ -99,6 +99,16 @@ fi
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "The path for storing log archives is $log_path" 
 
+#archive current logs 
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+echo $TIMESTAMP "Archiving current logs..."
+tsm maintenance ziplogs -t -o -f logs-$DATE.zip
+if [ $? -ne 0 ]; then
+  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+  echo $TIMESTAMP "ERROR: Log archive operation failed."
+  exit 6
+fi
+
 # count the number of log files eligible for deletion and output 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Cleaning up old log files..."
@@ -111,16 +121,6 @@ else echo $TIMESTAMP $lines found, deleting...
 	find "$log_path" -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Cleaning up completed."		
-fi
-
-#archive current logs 
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Archiving current logs..."
-tsm maintenance ziplogs -t -o -f logs-$DATE.zip
-if [ $? -ne 0 ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Log archive operation failed."
-  exit 6
 fi
 #copy logs to different location (optional)
 if [ "$copy_logs" == "yes" ]; then

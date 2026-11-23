@@ -97,18 +97,6 @@ fi
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "The path for storing backups is $backup_path" 
 
-# count the number of backup files eligible for deletion and output 
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Cleaning up old backups..."
-lines=$(find "$backup_path" -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days | wc -l)
-if [ $lines -eq 0 ]; then 
-	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-	echo $TIMESTAMP $lines old backups found, skipping...
-else echo  $TIMESTAMP $lines old backups found, deleting...
-	#remove backup files older than N days
-	find "$backup_path" -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm -f {} \;
-fi
-
 #export current settings
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Exporting current settings..."
@@ -126,6 +114,18 @@ if [ $? -ne 0 ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Backup operation failed."
   exit 7
+fi
+
+# count the number of backup files eligible for deletion and output 
+TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+echo $TIMESTAMP "Cleaning up old backups..."
+lines=$(find "$backup_path" -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days | wc -l)
+if [ $lines -eq 0 ]; then 
+	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+	echo $TIMESTAMP $lines old backups found, skipping...
+else echo  $TIMESTAMP $lines old backups found, deleting...
+	#remove backup files older than N days
+	find "$backup_path" -type f -regex '.*.\(tsbak\|json\)' -mtime +$backup_days -exec rm -f {} \;
 fi
 #copy backups to different location (optional)
 if [ "$copy_backup" == "yes" ]; then
