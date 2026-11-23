@@ -24,7 +24,7 @@ if %ERRORLEVEL% NEQ 0 (
 :: Check if TSM is available and responsive
 :check_tsm_availability
 ECHO %date% %time% : Checking TSM availability
-tsm version >NUL 2>&1
+CALL tsm version >NUL 2>&1
 if %ERRORLEVEL% NEQ 0 (
   ECHO %date% %time% : ERROR: TSM is not available or not in PATH. Please ensure Tableau Server is installed and TSM is accessible.
   EXIT /B 2
@@ -32,7 +32,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 :: Check if TSM configuration is accessible
 ECHO %date% %time% : Validating TSM configuration access
-tsm configuration get -k basefilepath.backuprestore >NUL 2>&1
+CALL tsm configuration get -k basefilepath.backuprestore >NUL 2>&1
 if %ERRORLEVEL% NEQ 0 (
   ECHO %date% %time% : ERROR: Cannot access TSM configuration. Please ensure you have proper TSM permissions.
   EXIT /B 3
