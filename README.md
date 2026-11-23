@@ -54,7 +54,7 @@ chmod +x setup.bash
 sudo ./setup.bash
 ```
 
-**Migration:** `setup.bash` no longer installs `tableau-server-logs-cleanup.bash`. Existing installs keep the old copy and any cron line calling it; switch to the log-archive and cleanup scripts.
+**Migration (Linux):** `setup.bash` overwrites the scripts, resetting any values you edited at the top of them. Before re-running it, move your edited values into `/etc/tableau-server-housekeeping.conf` (see [Linux usage](#linux)). `setup.bash` no longer installs `tableau-server-logs-cleanup.bash`. Existing installs keep the old copy and any cron line calling it; switch to the log-archive and cleanup scripts.
 
 ## Usage
 
@@ -84,7 +84,20 @@ Files created and deleted by retention (backup and archive directories come from
 
 ### Linux
 
-Configured by variables at the top of each script, not arguments (except log archive).
+**Warning:** the settings file is sourced as shell code by a script running as root or a tsm administrator. It must be owned by root and not writable by group or others, otherwise the script exits non-zero (see [exit codes](#exit-codes)).
+
+Configured by variables, not arguments (except log archive). Defaults are at the top of each script; values in the optional `/etc/tableau-server-housekeeping.conf` override them and survive `setup.bash` updates. One file serves all scripts. `setup.bash` never creates or changes it.
+
+```bash
+sudo tee /etc/tableau-server-housekeeping.conf <<'EOF'
+backup_name="daily-backup"
+backup_days="30"
+copy_backup="yes"
+external_backup_path="/mnt/backups"
+EOF
+sudo chown root:root /etc/tableau-server-housekeeping.conf
+sudo chmod 644 /etc/tableau-server-housekeeping.conf
+```
 
 | Variable | Scripts | Meaning |
 |----------|---------|---------|
@@ -95,7 +108,7 @@ Configured by variables at the top of each script, not arguments (except log arc
 | `log_days` | housekeeping, logs-cleanup | Archive retention in days, positive integer |
 | `copy_logs`, `external_log_path` | log-archive, housekeeping, logs-cleanup | Copy today's archive to another path |
 
-`tableau-server-log-archive.bash` requires the retention days as its single argument, which overrides `log_days`:
+`tableau-server-log-archive.bash` requires the retention days as its single argument, which overrides `log_days` and the settings file:
 ```bash
 tableau-server-log-archive.bash 7
 ```
@@ -174,11 +187,12 @@ In housekeeping-linux, ziplogs failure (6) and cleanup failure (8) are returned 
 | 3 | `tsm version` failed | `tsm version` failed | `tsm version` failed | `tsm version` failed | `tsm version` failed |
 | 4 | Cannot read TSM configuration | Cannot read TSM configuration | `tsm status` failed | Cannot read TSM configuration | Cannot read TSM configuration |
 | 5 | Backup path empty or unreadable | Log archive path empty or unreadable | Cleanup failed | Log archive or backup path empty or unreadable | Log archive path empty or unreadable |
-| 6 | Settings export failed | ziplogs failed | - | ziplogs or settings export failed | ziplogs failed |
+| 6 | Settings export failed | ziplogs failed | Settings file unsafe or unreadable | ziplogs or settings export failed | ziplogs failed |
 | 7 | Backup failed | Invalid `log_days` | - | Backup failed | Cleanup failed |
-| 8 | Invalid `backup_days` | - | - | Cleanup failed | Invalid `log_days` |
-| 9 | - | - | - | Invalid `backup_days` | - |
+| 8 | Invalid `backup_days` | Settings file unsafe or unreadable | - | Cleanup failed | Invalid `log_days` |
+| 9 | Settings file unsafe or unreadable | - | - | Invalid `backup_days` | Settings file unsafe or unreadable |
 | 10 | - | - | - | Invalid `log_days` | - |
+| 11 | - | - | - | Settings file unsafe or unreadable | - |
 
 ## Troubleshooting
 

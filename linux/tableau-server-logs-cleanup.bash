@@ -24,6 +24,8 @@
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
+# Or put your values in /etc/tableau-server-housekeeping.conf (VAR="value" lines): settings
+# there override these defaults and survive updates by setup.bash
 
 # Grab the current date in YYYY-MM-DD format
 DATE=$(date +%Y-%m-%d)
@@ -39,6 +41,17 @@ external_log_path="/tmp/log-archives/"
 log_days="7"
 
 # END OF VARIABLES SECTION
+
+# Optional settings file: values in it override the defaults above and survive updates
+settings_file="/etc/tableau-server-housekeeping.conf"
+if [[ -f "$settings_file" ]]; then
+	read -r settings_owner settings_mode < <(stat -c '%u %a' "$settings_file")
+	if [[ "$settings_owner" != 0 ]] || (( 8#${settings_mode:-777} & 022 )) || [[ ! -r "$settings_file" ]]; then
+		echo "ERROR: $settings_file must be readable, owned by root and not writable by group or others."
+		exit 9
+	fi
+	source "$settings_file"
+fi
 
 # LOAD ENVIRONMENT & USER INPUT
 

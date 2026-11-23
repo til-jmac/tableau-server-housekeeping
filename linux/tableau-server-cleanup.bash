@@ -23,6 +23,8 @@
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
+# Or put your values in /etc/tableau-server-housekeeping.conf (VAR="value" lines): settings
+# there override these defaults and survive updates by setup.bash
 
 # Grab the current datetime for timestamping the log entries
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
@@ -30,6 +32,17 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 tsm_group="tsmadmin"
 
 # END OF VARIABLES SECTION
+
+# Optional settings file: values in it override the defaults above and survive updates
+settings_file="/etc/tableau-server-housekeeping.conf"
+if [[ -f "$settings_file" ]]; then
+	read -r settings_owner settings_mode < <(stat -c '%u %a' "$settings_file")
+	if [[ "$settings_owner" != 0 ]] || (( 8#${settings_mode:-777} & 022 )) || [[ ! -r "$settings_file" ]]; then
+		echo "ERROR: $settings_file must be readable, owned by root and not writable by group or others."
+		exit 6
+	fi
+	source "$settings_file"
+fi
 
 # LOAD ENVIRONMENT & USER INPUT
 

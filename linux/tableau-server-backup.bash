@@ -19,6 +19,8 @@
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
+# Or put your values in /etc/tableau-server-housekeeping.conf (VAR="value" lines): settings
+# there override these defaults and survive updates by setup.bash
 
 # Set the date how we want it
 DATE=$(date '+%Y-%m-%d')
@@ -35,6 +37,17 @@ backup_days="2"
 # What do you want to name your backup files? (will automatically append current date to this filename)
 backup_name="tableau-server-backup"
 # END OF VARIABLES SECTION
+
+# Optional settings file: values in it override the defaults above and survive updates
+settings_file="/etc/tableau-server-housekeeping.conf"
+if [[ -f "$settings_file" ]]; then
+	read -r settings_owner settings_mode < <(stat -c '%u %a' "$settings_file")
+	if [[ "$settings_owner" != 0 ]] || (( 8#${settings_mode:-777} & 022 )) || [[ ! -r "$settings_file" ]]; then
+		echo "ERROR: $settings_file must be readable, owned by root and not writable by group or others."
+		exit 9
+	fi
+	source "$settings_file"
+fi
 
 # LOAD ENVIRONMENT & USER INPUT
 
