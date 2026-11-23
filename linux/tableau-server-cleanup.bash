@@ -14,14 +14,20 @@
 #
 #		Schedule the script using cron to run on a regular basis
 #		
-#		For example, to schedule it to run once a week at 03:00, add this to your crontab
-#			0 3 * * 0 /var/opt/tableau/tableau_server/scripts/tableau-server-cleanup.bash > /home/<TSM_USER>/tableau-server-cleanup.log
+#		Schedule it daily, running immediately after tableau-server-log-archive.bash.
+#		ziplogs collects about the last two days of logs by default and cleanup -l removes
+#		logs older than one day, so a weekly schedule loses most logs.
+#
+#		For example, to schedule it to run once a day at 03:00, add this to your crontab
+#			0 3 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-cleanup.bash > /home/<TSM_USER>/tableau-server-cleanup.log
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
 
 # Grab the current datetime for timestamping the log entries
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+# The OS group whose members are allowed to run tsm commands
+tsm_group="tsmadmin"
 
 # END OF VARIABLES SECTION
 
@@ -43,33 +49,33 @@ load_environment_file
 
 # Function to check TSM availability and configuration
 check_tsm_prerequisites() {
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "Checking TSM availability..."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "Checking TSM availability..."
   
   # Check if TSM is available
   if ! command -v tsm &> /dev/null; then
-    echo $TIMESTAMP "ERROR: TSM command not found. Please ensure Tableau Server is installed and TSM is in PATH."
+    echo "$TIMESTAMP" "ERROR: TSM command not found. Please ensure Tableau Server is installed and TSM is in PATH."
     exit 2
   fi
   
   # Check TSM version
   if ! tsm version &> /dev/null; then
-    echo $TIMESTAMP "ERROR: TSM is not responsive. Please check Tableau Server status."
+    echo "$TIMESTAMP" "ERROR: TSM is not responsive. Please check Tableau Server status."
     exit 3
   fi
   
   # Check if we can access TSM status
   if ! tsm status &> /dev/null; then
-    echo $TIMESTAMP "ERROR: Cannot access TSM status. Please check TSM permissions."
+    echo "$TIMESTAMP" "ERROR: Cannot access TSM status. Please check TSM permissions."
     exit 4
   fi
   
-  echo $TIMESTAMP "TSM validation completed successfully."
+  echo "$TIMESTAMP" "TSM validation completed successfully."
 }
 
-# Verify user is member of tsmadmin group or root
-if ! (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]); then
-	echo "ERROR: Script must be run as a member of the tsmadmin group or as root."
+# Verify user is member of the TSM group or root
+if ! (id -nG | tr ' ' '\n' | grep -qx "$tsm_group" || [ ${EUID} -eq 0 ]); then
+	echo "ERROR: Script must be run as a member of the $tsm_group group or as root."
 	exit 1
 fi
 
@@ -79,17 +85,17 @@ check_tsm_prerequisites
 # CLEANUP SECTION
 
 # cleanup old logs and temp files 
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Cleaning up Tableau Server log and temp files..."
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Cleaning up Tableau Server log and temp files..."
 tsm maintenance cleanup -l -t
 if [ $? -ne 0 ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Cleanup operation failed."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "ERROR: Cleanup operation failed."
   exit 5
 fi
 
 # END OF CLEANUP SECTION
 
 # END OF SCRIPT
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Cleanup completed successfully"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Cleanup completed successfully"

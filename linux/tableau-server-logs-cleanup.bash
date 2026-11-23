@@ -8,31 +8,35 @@
 #
 #		Test that the script works in your environment by running it manually
 #			You must execute the script as a user that is a member of the tsmadmin group
-#			sudo su -l <tsmusername> -c /var/opt/tableau/tableau_server/scripts/tableau-server-housekeeping.sh <tsmusername> <tsmpassword>
+#			sudo su -l <tsmusername> -c /var/opt/tableau/tableau_server/scripts/tableau-server-logs-cleanup.bash
 #
 #		Run as a user that is a member of the tsmadmin group  
 #
 #		Schedule the script using cron to run on a regular basis
 #			sudo su -l $tsmuser -c "crontab -e"
 #		
+#		Schedule it daily: log archive runs immediately before cleanup in this script.
+#		ziplogs collects about the last two days of logs by default and cleanup -l removes
+#		logs older than one day, so a weekly schedule loses most logs.
+#
 #		For example, to schedule it to run once a day at 01:00, add this to your crontab
-#			0 1 * * * /var/opt/tableau/tableau_server/scripts/<SCRIPT_FILE_NAME_HERE> > /home/<TSM_USER>/tableau-server-housekeeping.log
+#			0 1 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-logs-cleanup.bash > /home/<TSM_USER>/tableau-server-logs-cleanup.log
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
 
 # Grab the current date in YYYY-MM-DD format
-DATE=`date +%Y-%m-%d`
+DATE=$(date +%Y-%m-%d)
 # Grab the current datetime for timestamping the log entries
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+# The OS group whose members are allowed to run tsm commands
+tsm_group="tsmadmin"
 # Do you want to copy your archived logs to another location after completion?
 copy_logs="no"
 # Where do you want to save your archived logs?
 external_log_path="/tmp/log-archives/"
 # How many days to you want to keep archived log files for?
 log_days="7"
-# What do you want to name your logs file? (will automatically append current date to this filename)
-log_name="logs"
 
 # END OF VARIABLES SECTION
 
@@ -54,34 +58,40 @@ load_environment_file
 
 # Function to check TSM availability and configuration
 check_tsm_prerequisites() {
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "Checking TSM availability..."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "Checking TSM availability..."
   
   # Check if TSM is available
   if ! command -v tsm &> /dev/null; then
-    echo $TIMESTAMP "ERROR: TSM command not found. Please ensure Tableau Server is installed and TSM is in PATH."
+    echo "$TIMESTAMP" "ERROR: TSM command not found. Please ensure Tableau Server is installed and TSM is in PATH."
     exit 2
   fi
   
   # Check TSM version
   if ! tsm version &> /dev/null; then
-    echo $TIMESTAMP "ERROR: TSM is not responsive. Please check Tableau Server status."
+    echo "$TIMESTAMP" "ERROR: TSM is not responsive. Please check Tableau Server status."
     exit 3
   fi
   
   # Check if we can access TSM configuration
   if ! tsm configuration get -k basefilepath.log_archive &> /dev/null; then
-    echo $TIMESTAMP "ERROR: Cannot access TSM configuration. Please check TSM permissions."
+    echo "$TIMESTAMP" "ERROR: Cannot access TSM configuration. Please check TSM permissions."
     exit 4
   fi
   
-  echo $TIMESTAMP "TSM validation completed successfully."
+  echo "$TIMESTAMP" "TSM validation completed successfully."
 }
 
-# Verify user is member of tsmadmin group or root
-if ! (id -nG | grep -q tsmadmin || [ ${EUID} -eq 0 ]); then
-	echo "ERROR: Script must be run as a member of the tsmadmin group or as root."
+# Verify user is member of the TSM group or root
+if ! (id -nG | tr ' ' '\n' | grep -qx "$tsm_group" || [ ${EUID} -eq 0 ]); then
+	echo "ERROR: Script must be run as a member of the $tsm_group group or as root."
 	exit 1
+fi
+
+# Validate retention days (log_days) is a positive integer
+if ! [[ "$log_days" =~ ^[1-9][0-9]*$ ]]; then
+	echo "ERROR: log_days must be a positive integer (got '$log_days')."
+	exit 8
 fi
 
 # Run TSM validation
@@ -92,41 +102,46 @@ check_tsm_prerequisites
 # get the path to the log archive folder
 log_path=$(tsm configuration get -k basefilepath.log_archive)
 if [ $? -ne 0 ] || [ -z "$log_path" ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Failed to retrieve log archive path from TSM configuration."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "ERROR: Failed to retrieve log archive path from TSM configuration."
   exit 5
 fi
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "The path for storing log archives is $log_path" 
-
-# count the number of log files eligible for deletion and output 
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Cleaning up old log files..."
-lines=$(find "$log_path" -type f -name '*.zip' -mtime +$log_days | wc -l)
-if [ $lines -eq 0 ]; then 
-	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-	echo $TIMESTAMP $lines found, skipping...	
-else echo $TIMESTAMP $lines found, deleting...
-	#remove log archives older than the specified number of days
-	find "$log_path" -type f -name '*.zip' -mtime +$log_days -exec rm {} \;
-	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-	echo $TIMESTAMP "Cleaning up completed."		
-fi
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "The path for storing log archives is $log_path" 
 
 #archive current logs 
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Archiving current logs..."
-tsm maintenance ziplogs -t -o -f logs-$DATE.zip
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Archiving current logs..."
+tsm maintenance ziplogs -t -o -f "logs-$DATE.zip"
 if [ $? -ne 0 ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Log archive operation failed."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "ERROR: Log archive operation failed."
   exit 6
+fi
+
+# count the number of log files eligible for deletion and output 
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Cleaning up old log files..."
+lines=$(find "$log_path" -maxdepth 1 -type f -name 'logs-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].zip' -mtime +"$((log_days - 1))" | wc -l)
+if [ "$lines" -eq 0 ]; then 
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "$lines found, skipping..."
+else
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "$lines found, deleting..."
+	#remove log archives older than the specified number of days
+	find "$log_path" -maxdepth 1 -type f -name 'logs-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].zip' -mtime +"$((log_days - 1))" -exec rm {} \;
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "Cleaning up completed."		
 fi
 #copy logs to different location (optional)
 if [ "$copy_logs" == "yes" ]; then
-	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-	echo $TIMESTAMP "Copying logs to remote share"
-	cp "$log_path/$log_name-$DATE" "$external_log_path"/ 
+	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+	echo "$TIMESTAMP" "Copying logs to remote share"
+	if ! cp "$log_path/logs-$DATE.zip" "$external_log_path/"; then
+		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+		echo "$TIMESTAMP" "ERROR: Failed to copy log archive to $external_log_path (continuing)."
+	fi
 fi
 
 # END OF LOGS SECTION
@@ -134,12 +149,12 @@ fi
 # CLEANUP AND RESTART SECTION
 
 # cleanup old logs and temp files 
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Cleaning up Tableau Server..."
-tsm maintenance cleanup -a
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Cleaning up Tableau Server..."
+tsm maintenance cleanup -l -t
 if [ $? -ne 0 ]; then
-  TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-  echo $TIMESTAMP "ERROR: Cleanup operation failed."
+  TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "$TIMESTAMP" "ERROR: Cleanup operation failed."
   exit 7
 fi
 # restart the server (optional, uncomment to run)
@@ -149,5 +164,5 @@ fi
 # END OF CLEANUP AND RESTART SECTION
 
 # END OF SCRIPT
-TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
-echo $TIMESTAMP "Housekeeping completed"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "$TIMESTAMP" "Housekeeping completed"
