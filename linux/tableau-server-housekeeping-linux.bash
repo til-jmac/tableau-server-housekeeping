@@ -22,6 +22,8 @@
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
+# Or put your values in /etc/tableau-server-housekeeping.conf (VAR="value" lines): settings
+# there override these defaults and survive updates by setup.bash
 
 # Grab the current date in YYYY-MM-DD format
 DATE=$(date +%Y-%m-%d)
@@ -31,20 +33,31 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 tsm_group="tsmadmin"
 # Do you want to copy your backups to another location after completion?
 copy_backup="no"
-# If yes to above, where do you want to copy them? 
-external_backup_path="/tmp/backups/"
+# If yes to above, where do you want to copy them? Must be set to an existing directory when copy_backup is "yes"
+external_backup_path=""
 # How many days do you want to keep old backup files for? 
 backup_days="7"
 # What do you want to name your backup files? (will automatically append current date to this filename)
 backup_name="tableau-server-backup"
 # Do you want to copy your archived logs to another location after completion?
 copy_logs="no"
-# Where do you want to save your archived logs?
-external_log_path="/tmp/log-archives/"
+# Where do you want to save your archived logs? Must be set to an existing directory when copy_logs is "yes"
+external_log_path=""
 # How many days to you want to keep archived log files for?
 log_days="7"
 
 # END OF VARIABLES SECTION
+
+# Optional settings file: values in it override the defaults above and survive updates
+settings_file="/etc/tableau-server-housekeeping.conf"
+if [[ -f "$settings_file" ]]; then
+	read -r settings_owner settings_mode < <(stat -c '%u %a' "$settings_file")
+	if [[ "$settings_owner" != 0 ]] || (( 8#${settings_mode:-777} & 022 )) || [[ ! -r "$settings_file" ]]; then
+		echo "ERROR: $settings_file must be readable, owned by root and not writable by group or others."
+		exit 11
+	fi
+	source "$settings_file"
+fi
 
 # LOAD ENVIRONMENT & USER INPUT
 
@@ -106,6 +119,16 @@ if ! [[ "$log_days" =~ ^[1-9][0-9]*$ ]]; then
 	exit 10
 fi
 
+# Validate the copy destinations when copying is enabled
+if [ "$copy_backup" == "yes" ] && { [ -z "$external_backup_path" ] || [ ! -d "$external_backup_path" ]; }; then
+	echo "ERROR: copy_backup is yes but external_backup_path ('$external_backup_path') is empty or not an existing directory."
+	exit 12
+fi
+if [ "$copy_logs" == "yes" ] && { [ -z "$external_log_path" ] || [ ! -d "$external_log_path" ]; }; then
+	echo "ERROR: copy_logs is yes but external_log_path ('$external_log_path') is empty or not an existing directory."
+	exit 12
+fi
+
 # Run TSM validation
 check_tsm_prerequisites
 
@@ -159,7 +182,8 @@ if [ "$logs_archived" == "yes" ]; then
 		echo "$TIMESTAMP" "Copying logs to remote share"
 		if ! cp "$log_path/logs-$DATE.zip" "$external_log_path/"; then
 			TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-			echo "$TIMESTAMP" "ERROR: Failed to copy log archive to $external_log_path (continuing)."
+			echo "$TIMESTAMP" "ERROR: Log archive succeeded but copying it to $external_log_path failed (continuing)."
+			[ "$exit_code" -eq 0 ] && exit_code=13
 		fi
 	fi
 fi
@@ -236,7 +260,12 @@ fi
 if [ "$copy_backup" == "yes" ]; then
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "Copying backup and settings to remote share"
-	cp "$backup_path"/* "$external_backup_path"/
+	# Copy files only: a subfolder in the backup directory must not count as a copy failure
+	if ! find "$backup_path" -maxdepth 1 -type f -exec cp -t "$external_backup_path" {} +; then
+		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+		echo "$TIMESTAMP" "ERROR: Backup succeeded but copying it to $external_backup_path failed."
+		[ "$exit_code" -eq 0 ] && exit_code=13
+	fi
 fi
 
 # END OF BACKUP SECTION

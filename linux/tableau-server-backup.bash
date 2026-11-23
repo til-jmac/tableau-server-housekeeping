@@ -19,6 +19,8 @@
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
+# Or put your values in /etc/tableau-server-housekeeping.conf (VAR="value" lines): settings
+# there override these defaults and survive updates by setup.bash
 
 # Set the date how we want it
 DATE=$(date '+%Y-%m-%d')
@@ -28,13 +30,24 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 tsm_group="tsmadmin"
 # Do you want to copy your backups to another location after completion?
 copy_backup="no"
-# If yes to above, where do you want to copy them? 
-external_backup_path="/tmp/backups/"
+# If yes to above, where do you want to copy them? Must be set to an existing directory when copy_backup is "yes" 
+external_backup_path=""
 # How many days do you want to keep old backup files for? 
 backup_days="2"
 # What do you want to name your backup files? (will automatically append current date to this filename)
 backup_name="tableau-server-backup"
 # END OF VARIABLES SECTION
+
+# Optional settings file: values in it override the defaults above and survive updates
+settings_file="/etc/tableau-server-housekeeping.conf"
+if [[ -f "$settings_file" ]]; then
+	read -r settings_owner settings_mode < <(stat -c '%u %a' "$settings_file")
+	if [[ "$settings_owner" != 0 ]] || (( 8#${settings_mode:-777} & 022 )) || [[ ! -r "$settings_file" ]]; then
+		echo "ERROR: $settings_file must be readable, owned by root and not writable by group or others."
+		exit 9
+	fi
+	source "$settings_file"
+fi
 
 # LOAD ENVIRONMENT & USER INPUT
 
@@ -90,6 +103,12 @@ if ! [[ "$backup_days" =~ ^[1-9][0-9]*$ ]]; then
 	exit 8
 fi
 
+# Validate the copy destination when copying is enabled
+if [ "$copy_backup" == "yes" ] && { [ -z "$external_backup_path" ] || [ ! -d "$external_backup_path" ]; }; then
+	echo "ERROR: copy_backup is yes but external_backup_path ('$external_backup_path') is empty or not an existing directory."
+	exit 10
+fi
+
 # Run TSM validation
 check_tsm_prerequisites
 
@@ -142,7 +161,12 @@ fi
 if [ "$copy_backup" == "yes" ]; then
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "Copying backup and settings to remote share"
-	cp "$backup_path"/* "$external_backup_path"/
+	# Copy files only: a subfolder in the backup directory must not count as a copy failure
+	if ! find "$backup_path" -maxdepth 1 -type f -exec cp -t "$external_backup_path" {} +; then
+		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+		echo "$TIMESTAMP" "ERROR: Backup succeeded but copying it to $external_backup_path failed."
+		exit 11
+	fi
 fi
 
 # END OF BACKUP SECTION

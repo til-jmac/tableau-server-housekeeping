@@ -84,5 +84,13 @@ for script_file in "${scripts[@]}"; do
   fi
 done
 
+# Settings live in an optional file that setup never touches
+settings_file=/etc/tableau-server-housekeeping.conf
+if [[ -f "${settings_file}" ]]; then
+  echo "Settings file: ${settings_file}"
+else
+  echo "Settings go in ${settings_file} (not found, script defaults are in use)"
+fi
+
 # Script is set up, now to schedule in crontab
 echo 'Tableau Server housekeeping script is now installed. Please refer to the script documentation to schedule in crontab'
