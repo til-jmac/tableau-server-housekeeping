@@ -16,9 +16,9 @@
 @echo OFF
 cls
 
-:: Checks that the script is being run with Admin rights. 
+:: Checks that the script is being run with Admin rights. fltmc needs elevation but, unlike NET SESSION, not the Server service.
 :check_admin
-NET SESSION >NUL 2>&1
+fltmc >NUL 2>&1
 if %ERRORLEVEL% NEQ 0 (
   ECHO %date% %time% : This script must be run as Administrator. Cancelling.
   EXIT /B 1
