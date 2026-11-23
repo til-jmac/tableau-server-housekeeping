@@ -13,6 +13,10 @@
 #		Schedule the script using cron to run on a regular basis
 #			sudo su -l $tsmuser -c "crontab -e"
 #		
+#		Schedule it daily: log archive runs immediately before cleanup in this script.
+#		ziplogs collects about the last two days of logs by default and cleanup -l removes
+#		logs older than one day, so a weekly schedule loses most logs.
+#
 #		For example, to schedule it to run once a day at 01:00, add this to your crontab
 #			0 1 * * * /var/opt/tableau/tableau_server/scripts/<SCRIPT_FILE_NAME_HERE> > /home/<TSM_USER>/tableau-server-housekeeping.log
 
@@ -120,7 +124,7 @@ echo $TIMESTAMP "The path for storing log archives is $log_path"
 #archive current logs 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Archiving current logs..."
-tsm maintenance ziplogs -a -t -o -f logs-$DATE.zip
+tsm maintenance ziplogs -t -o -f "logs-$DATE.zip"
 if [ $? -ne 0 ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Log archive operation failed."

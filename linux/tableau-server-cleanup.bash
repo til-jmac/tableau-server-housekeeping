@@ -14,8 +14,12 @@
 #
 #		Schedule the script using cron to run on a regular basis
 #		
-#		For example, to schedule it to run once a week at 03:00, add this to your crontab
-#			0 3 * * 0 /var/opt/tableau/tableau_server/scripts/tableau-server-cleanup.bash > /home/<TSM_USER>/tableau-server-cleanup.log
+#		Schedule it daily, running immediately after tableau-server-log-archive.bash.
+#		ziplogs collects about the last two days of logs by default and cleanup -l removes
+#		logs older than one day, so a weekly schedule loses most logs.
+#
+#		For example, to schedule it to run once a day at 03:00, add this to your crontab
+#			0 3 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-cleanup.bash > /home/<TSM_USER>/tableau-server-cleanup.log
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment

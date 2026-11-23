@@ -14,8 +14,12 @@
 #
 #		Schedule the script using cron to run on a regular basis
 #		
-#		For example, to schedule it to run once a week at 02:00, add this to your crontab
-#			0 2 * * 0 /var/opt/tableau/tableau_server/scripts/tableau-server-log-archive.bash 7 > /home/<TSM_USER>/tableau-server-log-archive.log
+#		Schedule it daily, running immediately before tableau-server-cleanup.bash.
+#		ziplogs collects about the last two days of logs by default and cleanup -l removes
+#		logs older than one day, so a weekly schedule loses most logs.
+#
+#		For example, to schedule it to run once a day at 02:00, add this to your crontab
+#			0 2 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-log-archive.bash 7 > /home/<TSM_USER>/tableau-server-log-archive.log
 
 #VARIABLES SECTION
 # Set some variables - you should change these to match your own environment
@@ -117,7 +121,7 @@ echo $TIMESTAMP "The path for storing log archives is $log_path"
 #archive current logs 
 TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 echo $TIMESTAMP "Archiving current logs..."
-tsm maintenance ziplogs -a -o -f logs-$DATE.zip
+tsm maintenance ziplogs -o -f "logs-$DATE.zip"
 if [ $? -ne 0 ]; then
   TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
   echo $TIMESTAMP "ERROR: Log archive operation failed."
