@@ -134,7 +134,10 @@ fi
 if [ "$copy_logs" == "yes" ]; then
 	TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $TIMESTAMP "Copying logs to remote share"
-	cp $log_path/$log_name-$DATE $external_log_path/ 
+	if ! cp "$log_path/logs-$DATE.zip" "$external_log_path/"; then
+		TIMESTAMP=`date '+%Y-%m-%d %H:%M:%S'`
+		echo $TIMESTAMP "ERROR: Failed to copy log archive to $external_log_path (continuing)."
+	fi
 fi
 
 # END OF LOGS SECTION
