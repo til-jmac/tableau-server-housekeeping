@@ -161,7 +161,8 @@ fi
 if [ "$copy_backup" == "yes" ]; then
 	TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 	echo "$TIMESTAMP" "Copying backup and settings to remote share"
-	if ! cp "$backup_path"/* "$external_backup_path"/; then
+	# Copy files only: a subfolder in the backup directory must not count as a copy failure
+	if ! find "$backup_path" -maxdepth 1 -type f -exec cp -t "$external_backup_path" {} +; then
 		TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 		echo "$TIMESTAMP" "ERROR: Backup succeeded but copying it to $external_backup_path failed."
 		exit 11
