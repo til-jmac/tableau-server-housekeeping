@@ -146,6 +146,8 @@ ECHO %backuppath%
 :: In v2018.2.0 the slashes in the default path are the wrong direction, so let's fix this
 :fix_backup_dir
 SET "backuppath=%backuppath:/=\%"
+:: Strip one trailing backslash, otherwise FORFILES /P "...\" reads it as an escaped quote
+IF "%backuppath:~-1%"=="\" SET "backuppath=%backuppath:~0,-1%"
 ECHO The corrected backup path is now:
 ECHO %backuppath%
 
@@ -176,14 +178,15 @@ ECHO %date% %time% : Overwrite was not requested, proceeding
 
 :: Now let's actually do some stuff
 :: Check for previous backups and remove backup files older than N days
+:: FORFILES reports "No files found" as an error when nothing is old enough, which is normal, so hide only that message
 :delete_old_files
 ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
-FORFILES -p "%backuppath%" -s -m *.tsbak /D -%backupdays% /C "cmd /c del @path" 2>nul
+FORFILES /P "%backuppath%" /S /M *.tsbak /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :: Do the same for settings.json files
 :delete_old_settings_files
 ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
-FORFILES -p "%backuppath%" -s -m *.json /D -%backupdays% /C "cmd /c del @path" 2>nul
+FORFILES /P "%backuppath%" /S /M *.json /D -%backupdays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :: Then we take the backup
 :bakup

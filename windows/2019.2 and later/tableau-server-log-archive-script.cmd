@@ -106,14 +106,17 @@ ECHO %archivepath%
 :: In v2018.2.0 the slashes in the default path are the wrong direction, so let's fix this
 :fix_archive_dir
 SET "archivepath=%archivepath:/=\%"
+:: Strip one trailing backslash, otherwise FORFILES /P "...\" reads it as an escaped quote
+IF "%archivepath:~-1%"=="\" SET "archivepath=%archivepath:~0,-1%"
 ECHO The corrected archive path is now:
 ECHO %archivepath%
 
 :: Now let's actually do some stuff
 :: Check for previous log archives and remove files older than N days
+:: FORFILES reports "No files found" as an error when nothing is old enough, which is normal, so hide only that message
 :delete_old_files
 ECHO %date% %time% : Cleaning out archive files older than %archivedays% days
-FORFILES -p "%archivepath%" -s -m *.zip /D -%archivedays% /C "cmd /c del @path" 2>nul
+FORFILES /P "%archivepath%" /S /M *.zip /D -%archivedays% /C "cmd /c del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :: Then we archive the logs
 :archive
