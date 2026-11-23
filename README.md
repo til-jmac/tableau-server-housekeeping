@@ -5,7 +5,8 @@
 Backup, log archive and cleanup scripts for Tableau Server, built on `tsm`. Windows (CMD) and Linux (Bash).
 
 **Warnings**
-- Retention deletes files. It only matches files these scripts create, non-recursively, and runs only after the new backup or archive succeeds.
+- Retention deletes files. It matches only dated files with the configured name prefix (`<name>-YYYY-MM-DD.tsbak`, `<name>-settings-YYYY-MM-DD.json`, `logs-YYYY-MM-DD.zip`; on Linux also old `settings-<date>.json`), non-recursively, and runs only after the new backup or archive succeeds.
+- The scripts run elevated or as a tsm administrator: keep them where the Tableau service account and ordinary users cannot modify them (see [Scheduling](#scheduling)).
 - Windows scripts must run elevated. Linux scripts must run as a member of `tsm_group` (default `tsmadmin`) or root.
 - Legacy Windows scripts are unmaintained (see [Version Compatibility](#version-compatibility)).
 
@@ -46,18 +47,20 @@ Backup, log archive and cleanup scripts for Tableau Server, built on `tsm`. Wind
 
 **Windows:** copy the scripts from `windows/2019.2 and later/` to a folder on the server.
 
-**Linux:** run as root. Installs to `$TABLEAU_SERVER_DATA_DIR/scripts` and sets ownership to `$TABLEAU_SERVER_UNPRIVILEGED_USERNAME`.
+**Linux:** run as root. Installs to `$TABLEAU_SERVER_DATA_DIR/scripts`, owned `root:root`, mode 0755. Refuses a symlinked scripts directory.
 ```bash
 wget https://raw.githubusercontent.com/til-jmac/tableau-server-housekeeping/master/linux/setup.bash
 chmod +x setup.bash
 sudo ./setup.bash
 ```
 
+**Migration:** `setup.bash` no longer installs `tableau-server-logs-cleanup.bash`. Existing installs keep the old copy and any cron line calling it; switch to the log-archive and cleanup scripts.
+
 ## Usage
 
 ### Windows
 
-All parameters of the backup and log-archive scripts are required. `-d` must be a whole number of 1 or more. `-o` must be `true` or `false`.
+Parameters can be given in any order. `-n` and `-d` are required for backup, `-d` for log archive; `-o` defaults to `false`.
 
 ```cmd
 tableau-server-backup-script.cmd -n <name> -d <days> -o <true/false>
@@ -67,17 +70,17 @@ tableau-server-cleanup-script.cmd
 
 | Parameter | Meaning |
 |-----------|---------|
-| `-n, --name` | Backup name, no spaces, periods or special characters |
-| `-d, --days` | Delete this script's files older than N days |
-| `-o, --overwrite` | Delete today's existing backup and settings file of the same name before backing up |
+| `-n, --name` | Backup name: letters, digits, underscore and hyphen only |
+| `-d, --days` | Delete this script's files older than N days; whole number, 1 to 32768 |
+| `-o, --overwrite` | `true` or `false` (default). `true` deletes today's existing backup and settings file of the same name before backing up, so a failed run leaves no backup for that day |
 | `-h, --help` | Show help |
 
 Files created and deleted by retention (backup and archive directories come from `tsm configuration get`):
 
 | Script | Creates | Retention deletes |
 |--------|---------|-------------------|
-| backup | `<name>-YYYY-MM-DD.tsbak`, `<name>-settings-YYYY-MM-DD.json` | `<name>-*.tsbak`, `<name>-settings-*.json` |
-| log archive | `logs-YYYY-MM-DD.zip` | `logs-*.zip` |
+| backup | `<name>-YYYY-MM-DD.tsbak`, `<name>-settings-YYYY-MM-DD.json` | Same names, dated, older than N days |
+| log archive | `logs-YYYY-MM-DD.zip` | `logs-YYYY-MM-DD.zip` older than N days |
 
 ### Linux
 
@@ -97,21 +100,31 @@ Configured by variables at the top of each script, not arguments (except log arc
 tableau-server-log-archive.bash 7
 ```
 
-Settings export is `<backup_name>-settings-YYYY-MM-DD.json`. Linux backup retention deletes `<backup_name>-*.tsbak`, `<backup_name>-settings-*.json` and `settings-*.json`; log retention deletes `logs-*.zip`.
+Settings export is `<backup_name>-settings-YYYY-MM-DD.json`. Linux backup retention deletes `<backup_name>-YYYY-MM-DD.tsbak`, `<backup_name>-settings-YYYY-MM-DD.json` and the old `settings-DD-MM-YYYY.json` / `settings-YYYY-MM-DD.json`; log retention deletes `logs-YYYY-MM-DD.zip`. Other names (for example `<name>-weekly-...` or `settings-before-upgrade.json`) are kept.
 
 ## Scheduling
 
-Schedule backup daily. Schedule log archive daily, immediately before cleanup: ziplogs collects roughly the last two days of logs and cleanup removes logs older than one day, so weekly runs lose logs.
+**Security:** the scripts run elevated, so anyone who can edit them or their folders gets admin rights. A new top-level folder on `C:\` is typically writable by ordinary users. Lock it down:
+
+```cmd
+icacls C:\TableauScripts /inheritance:r /grant:r "Administrators:(OI)(CI)F" "SYSTEM:(OI)(CI)F"
+```
+
+Do the same for the log folder and the backup and log-archive folders. On Linux the scripts must be root-owned and not writable by the Tableau service account (`setup.bash` installs them that way).
+
+Schedule backup daily. Schedule log archive daily, immediately before cleanup: ziplogs collects roughly the last two days of logs and cleanup removes logs older than one day, so weekly runs lose logs. Do not let jobs overlap a long-running backup.
 
 ### Windows Task Scheduler
 
-Placeholders: `DOMAIN\svc-tableau`, `C:\Tableau Scripts`. `/rp *` prompts for the password. `/rl HIGHEST` runs the task elevated. `/tr` wraps the command in `cmd /c ""..." ... >> "..." 2>&1"` so the script path may contain spaces and output goes to a log file.
+Run from cmd.exe, not PowerShell. Paths must not contain spaces; use the Task Scheduler GUI if they must. Placeholders: `DOMAIN\svc-tableau`, `C:\TableauScripts`, `C:\TableauLogs`. `/rp *` prompts for the password. `/rl HIGHEST` runs the task elevated.
 
 ```cmd
-schtasks /create /tn "Tableau Backup" /ru "DOMAIN\svc-tableau" /rp * /rl HIGHEST /sc daily /st 01:00 /tr "cmd /c \"\"C:\Tableau Scripts\tableau-server-backup-script.cmd\" -n daily-backup -d 7 -o false >> \"C:\Tableau Scripts\backup.log\" 2>&1\""
-schtasks /create /tn "Tableau Log Archive" /ru "DOMAIN\svc-tableau" /rp * /rl HIGHEST /sc daily /st 02:00 /tr "cmd /c \"\"C:\Tableau Scripts\tableau-server-log-archive-script.cmd\" -d 7 >> \"C:\Tableau Scripts\log-archive.log\" 2>&1\""
-schtasks /create /tn "Tableau Cleanup" /ru "DOMAIN\svc-tableau" /rp * /rl HIGHEST /sc daily /st 02:30 /tr "cmd /c \"\"C:\Tableau Scripts\tableau-server-cleanup-script.cmd\" >> \"C:\Tableau Scripts\cleanup.log\" 2>&1\""
+schtasks /create /tn "Tableau Backup" /ru "DOMAIN\svc-tableau" /rp * /rl HIGHEST /sc daily /st 01:00 /tr "cmd /c C:\TableauScripts\tableau-server-backup-script.cmd -n daily-backup -d 7 -o false >> C:\TableauLogs\backup.log 2>&1"
+schtasks /create /tn "Tableau Log Archive" /ru "DOMAIN\svc-tableau" /rp * /rl HIGHEST /sc daily /st 03:00 /tr "cmd /c C:\TableauScripts\tableau-server-log-archive-script.cmd -d 7 >> C:\TableauLogs\log-archive.log 2>&1"
+schtasks /create /tn "Tableau Cleanup" /ru "DOMAIN\svc-tableau" /rp * /rl HIGHEST /sc daily /st 03:30 /tr "cmd /c C:\TableauScripts\tableau-server-cleanup-script.cmd >> C:\TableauLogs\cleanup.log 2>&1"
 ```
+
+Task Scheduler runs cleanup even if the archive failed: leave enough time after the backup and archive, and check `log-archive.log`.
 
 The account must be allowed to run `tsm` and have write access to the log folder. Use `schtasks /run /tn "<name>"` to start a task manually.
 
@@ -121,11 +134,12 @@ Add to the crontab of a `tsm_group` user (`sudo su -l <tsm user> -c "crontab -e"
 
 ```bash
 0 1 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-backup.bash >> /home/<TSM_USER>/tableau-server-backup.log 2>&1
-0 2 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-log-archive.bash 7 >> /home/<TSM_USER>/tableau-server-log-archive.log 2>&1
-30 2 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-cleanup.bash >> /home/<TSM_USER>/tableau-server-cleanup.log 2>&1
+
+# archive then cleanup; cleanup is skipped if the archive fails
+0 3 * * * /var/opt/tableau/tableau_server/scripts/tableau-server-log-archive.bash 7 >> /home/<TSM_USER>/tableau-server-log-archive.log 2>&1 && /var/opt/tableau/tableau_server/scripts/tableau-server-cleanup.bash >> /home/<TSM_USER>/tableau-server-cleanup.log 2>&1
 ```
 
-Alternatively schedule `tableau-server-housekeeping-linux.bash` once daily; it runs log archive, cleanup, then backup.
+Alternatively schedule `tableau-server-housekeeping-linux.bash` once daily; it runs log archive, cleanup, then backup. A ziplogs failure skips log retention, copy and cleanup; a cleanup failure is logged; both still run the backup and exit non-zero at the end (6 or 8).
 
 ## Exit codes
 
@@ -149,6 +163,8 @@ Windows exit 4 is unused.
 | 10 | Missing or invalid arguments | Missing or invalid arguments | Invalid arguments |
 
 ### Linux
+
+In housekeeping-linux, ziplogs failure (6) and cleanup failure (8) are returned at the end, after the backup has run. Codes are unchanged.
 
 | Code | backup | log-archive | cleanup | housekeeping-linux | logs-cleanup |
 |------|--------|-------------|---------|--------------------|--------------|
