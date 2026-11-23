@@ -1,10 +1,9 @@
 :: THE INFORMATION LAB BACKUP SCRIPT
 :: https://github.com/til-jmac/tableau-server-housekeeping
 :: Authored by Jonathan MacDonald
-:: Last updated 14/08/2020
 :: How to use this script
 :: 1) Create a scripts directory somewhere that makes sense for this (and other) scripts to be kept. Inside your Tableau Server 'data' folder is a good place.
-:: 2) The command line parameters are ALL required. Ensure you use them in the correct order or the script will fail
+:: 2) -n and -d are required, -o is optional and defaults to false. Parameters can be given in any order
 :: 3) Run this script as a user with permissions to authenticate to TSM. Also run it with elevated (administrator) privileges.
 :: 4) I would recommend you backup daily.
 :: 5) Use this script in conjunction with my log archival and cleanup scripts, which you can find at the Github link above
@@ -232,7 +231,7 @@ FORFILES /P "%backuppath%" /M "%filename%-????-??-??.tsbak" /D -%backupdays% /C 
 
 :: Do the same for the settings .json files
 :delete_old_settings_files
-ECHO %date% %time% : Cleaning out backup files older than %backupdays% days
+ECHO %date% %time% : Cleaning out settings files older than %backupdays% days
 FORFILES /P "%backuppath%" /M "%filename%-settings-????-??-??.json" /D -%backupdays% /C "cmd /c if @isdir==FALSE del @path" 2>&1 | FINDSTR /V /C:"No files found"
 
 :end_msg
@@ -251,11 +250,11 @@ EXIT /B 10
 
 :print_usage
 ECHO Usage:
-ECHO tableau-server-backup-script.cmd -n ^<filename^> -d ^<days^> -o ^<true/false^>
-ECHO Required parameters (use in sequence):
+ECHO tableau-server-backup-script.cmd -n ^<filename^> -d ^<days^> [-o ^<true/false^>]
+ECHO Parameters can be given in any order. -n and -d are required, -o is optional and defaults to false:
 ECHO 		-n,--name 		Name of the backup file. Letters, digits, underscore and hyphen only
 ECHO 		-d,--days 		Delete backups older than N days, N a whole number from 1 to 32768. Only files named
 ECHO 		          		^<filename^>-YYYY-MM-DD.tsbak and ^<filename^>-settings-YYYY-MM-DD.json in the backup location are deleted
-ECHO 		-o,--overwrite 		Overwrite any existing backup with the same name (takes appended date into account)
+ECHO 		-o,--overwrite 		true/false. Overwrite any existing backup with the same name (takes appended date into account)
 ECHO 		-h,--help 		Show this help
 GOTO :EOF

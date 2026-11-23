@@ -1,7 +1,6 @@
 :: THE INFORMATION LAB CLEANUP SCRIPT
 :: https://github.com/til-jmac/tableau-server-housekeeping
 :: Authored by Jonathan MacDonald
-:: Last updated 14/08/2020
 :: How to use this script
 :: By default, Tableau Server does not automatically archive/delete its log files.
 :: So a process is required to firstly archive old log files, then clean up the current logs to free up disk space.
@@ -12,7 +11,7 @@
 ::     so a weekly schedule loses most logs before they are archived.
 :: 2) Use this script in conjunction with my log archival and backup scripts, which you can find at the Github link above
 :: 3) Run this script with elevated privileges as the user that has permissions to run TSM
-:: 4) You MUST input all command line parameters in the order specified, or the script will fail
+:: 4) The script takes no parameters apart from -h/--help
 :: 5) This will execute the cleanup script with the following options: -l (deletes old log files) -t (deletes old temp files)
 ::    Modify the script below if you would like to change those options
 :: Give me a shout on Twitter @macdonaldj for questions, comments or feedback
@@ -92,6 +91,6 @@ EXIT /B 10
 :print_usage
 ECHO Usage:
 ECHO tableau-server-cleanup-script.cmd
-ECHO Global parameters (use in sequence):
+ECHO Optional parameters:
 ECHO 		-h,--help 		Show this help
 GOTO :EOF
