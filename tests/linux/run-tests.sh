@@ -141,6 +141,51 @@ STUB_FAIL=version; expect "tsm version failing" 3 "$(runrc "$cleanup")"
 STUB_FAIL=status; expect "tsm status failing" 4 "$(runrc "$cleanup")"
 STUB_FAIL=cleanup; expect "cleanup failing" 5 "$(runrc "$cleanup")"
 
+# optional settings file (root-owned, loaded by every script)
+conf=/etc/tableau-server-housekeeping.conf
+write_conf() { printf '%s\n' "$@" | sudo tee "$conf" > /dev/null; sudo chown root:root "$conf"; sudo chmod 644 "$conf"; }
+
+case_start settings-file
+write_conf 'backup_days="30"' 'backup_name="custom"'
+aged "$b/custom-2020-01-01.tsbak" "5 days ago"
+expect "backup with settings file" 0 "$(runrc "$backup")"
+check "backup uses the name from the settings file" has "$b/custom-$today.tsbak"
+check "5 day old backup kept with 30 day retention from the settings file" has "$b/custom-2020-01-01.tsbak"
+sudo chmod 666 "$conf"
+expect "world-writable settings file refused" 9 "$(runrc "$backup")"
+sudo chmod 644 "$conf"; sudo chown "$(id -u)" "$conf"
+expect "settings file not owned by root refused" 9 "$(runrc "$backup")"
+
+# copy to an external path
+case_start copy-empty-path
+write_conf 'copy_backup="yes"'
+expect "copy enabled with no path" 10 "$(runrc "$backup")"
+check "no backup made when the copy path is missing" empty_dir "$b"
+
+case_start copy-good
+ext="$root/copy-good/external"; mkdir -p "$ext" "$b/subfolder"
+write_conf 'copy_backup="yes"' "external_backup_path=\"$ext\""
+expect "copy to a good directory, backup folder has a subfolder" 0 "$(runrc "$backup")"
+check "backup copied" has "$ext/tableau-server-backup-$today.tsbak"
+check "settings copied" has "$ext/tableau-server-backup-settings-$today.json"
+
+case_start copy-readonly
+ext="$root/copy-readonly/external"; mkdir -p "$ext"; chmod 555 "$ext"
+write_conf 'copy_backup="yes"' "external_backup_path=\"$ext\""
+expect "copy to a read-only directory" 11 "$(runrc "$backup")"
+check "backup itself still exists" has "$b/tableau-server-backup-$today.tsbak"
+
+case_start copy-logs
+ext="$root/copy-logs/external"; mkdir -p "$ext"
+write_conf 'copy_logs="yes"' "external_log_path=\"$ext\""
+expect "log archive with copy" 0 "$(runrc "$logs" 7)"
+check "archive copied" has "$ext/logs-$today.zip"
+chmod 555 "$ext"; rm -f "$a/logs-$today.zip"
+write_conf 'copy_logs="yes"' "external_log_path=\"$root/copy-logs/missing\""
+expect "log copy path that does not exist" 9 "$(runrc "$logs" 7)"
+
+sudo rm -f "$conf"
+
 echo "::endgroup::"
 echo
 if [ "$failed" -gt 0 ]; then echo "$failed FAILED CHECKS"; exit 1; fi
