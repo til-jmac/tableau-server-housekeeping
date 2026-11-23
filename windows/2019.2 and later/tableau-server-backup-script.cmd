@@ -98,30 +98,6 @@ IF "%backupdays%" == "" (
 	GOTO show_help
 	)
 
-:: The new TSM backup command will not overwrite a file of the same name
-:: Given we are appending today's date to the end of the filename this should not be a problem if you are backing up daily
-:: However, if you are backing up more frequently than that, for testing for example, you may want to overwrite the existing file 
-:: Using the '-o' parameter with this script will overwrite the existing file
-:: So let's check if this was used    
-:check_overwrite
-ECHO %date% %time% : Checking if overwrite was requested
-IF NOT DEFINED overwrite_requested ( 
-	ECHO ERROR: Please specify true/false for overwrite flag. Cancelling. 
-	GOTO show_help
-	)
-IF NOT %overwrite_requested% == true GOTO no_overwrite
-IF %overwrite_requested% == true GOTO overwrite 
-
-:: It was used so let's delete the current file if it's there
-:overwrite
-ECHO %date% %time% : Overwrite was requested. Cleaning out any existing file with the same name
-IF EXIST "%backuppath%\%filename%-%mydate%.tsbak" DEL /F "%backuppath%\%filename%-%mydate%.tsbak" >nul 2>&1
-GOTO set_backup_dir
-
-:: It wasn't used so let's just go ahead and backup
-:no_overwrite
-ECHO %date% %time% : Overwrite was not requested, proceeding
-
 :: Let's find the locations of some directories using tsm 
 :: ECHO Setting the script location variable
 :: Grab the location of this script
@@ -151,6 +127,31 @@ ECHO %backuppath%
 :: ECHO Deriving the location of the install directory
 :: Derive the location of the install directory 
 :: FOR %%I IN ("%backuppath%\..\..\..\..") DO SET install_dir=%%~fI
+
+:: The new TSM backup command will not overwrite a file of the same name
+:: Given we are appending today's date to the end of the filename this should not be a problem if you are backing up daily
+:: However, if you are backing up more frequently than that, for testing for example, you may want to overwrite the existing file
+:: Using the '-o' parameter with this script will overwrite the existing file
+:: So let's check if this was used
+:check_overwrite
+ECHO %date% %time% : Checking if overwrite was requested
+IF NOT DEFINED overwrite_requested (
+	ECHO ERROR: Please specify true/false for overwrite flag. Cancelling.
+	GOTO show_help
+	)
+IF NOT %overwrite_requested% == true GOTO no_overwrite
+IF %overwrite_requested% == true GOTO overwrite
+
+:: It was used so let's delete today's backup and settings files if they are there
+:overwrite
+ECHO %date% %time% : Overwrite was requested. Cleaning out any existing files with the same name
+IF EXIST "%backuppath%\%filename%-%mydate%.tsbak" DEL /F "%backuppath%\%filename%-%mydate%.tsbak" >nul 2>&1
+IF EXIST "%backuppath%\%filename%-settings-%mydate%.json" DEL /F "%backuppath%\%filename%-settings-%mydate%.json" >nul 2>&1
+GOTO delete_old_files
+
+:: It wasn't used so let's just go ahead and backup
+:no_overwrite
+ECHO %date% %time% : Overwrite was not requested, proceeding
 
 :: Now let's actually do some stuff
 :: Check for previous backups and remove backup files older than N days
