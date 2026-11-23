@@ -6,22 +6,26 @@
     exit 1
   }
 
-# Loads the Tableau Server environment once. Tries the profile script first, then the fallback file.
+# Loads the Tableau Server environment. Sources the profile script and the environment file when present.
 load_environment_file() {
   local env_file
+  local loaded=0
 
   for env_file in /etc/profile.d/tableau_server.sh /etc/opt/tableau/tableau_server/environment.bash; do
     if [[ -f "${env_file}" ]]; then
-      if ! source "${env_file}"; then
-        echo "ERROR: failed to load Tableau Server environment from ${env_file}" >&2
-        return 1
+      if source "${env_file}"; then
+        loaded=1
+      else
+        echo "WARNING: failed to load Tableau Server environment from ${env_file}" >&2
       fi
-      return 0
     fi
   done
 
-  echo "ERROR: could not find a Tableau Server environment file (/etc/profile.d/tableau_server.sh or /etc/opt/tableau/tableau_server/environment.bash)" >&2
-  return 1
+  if [[ ${loaded} -eq 0 ]]; then
+    echo "ERROR: could not load a Tableau Server environment file (/etc/profile.d/tableau_server.sh or /etc/opt/tableau/tableau_server/environment.bash)" >&2
+    return 1
+  fi
+  return 0
 }
 
 if ! load_environment_file; then
@@ -30,11 +34,6 @@ fi
 
 if [[ -z "${TABLEAU_SERVER_DATA_DIR}" ]]; then
   echo "ERROR: TABLEAU_SERVER_DATA_DIR is not set. Check the Tableau Server environment." >&2
-  exit 1
-fi
-
-if [[ -z "${TABLEAU_SERVER_UNPRIVILEGED_USERNAME}" ]]; then
-  echo "ERROR: TABLEAU_SERVER_UNPRIVILEGED_USERNAME is not set. Check the Tableau Server environment." >&2
   exit 1
 fi
 
@@ -61,27 +60,29 @@ for script_file in "${scripts[@]}"; do
     echo "ERROR: failed to download ${base_url}/${script_file}" >&2
     exit 1
   fi
-done
-
-if [[ ! -e "${script_dir}" ]]; then
-  if ! mkdir "${script_dir}"; then
-    echo "ERROR: could not create ${script_dir}" >&2
+  if [[ ! -s "${tmp_dir}/${script_file}" ]] || [[ "$(head -n 1 "${tmp_dir}/${script_file}")" != '#!'* ]]; then
+    echo "ERROR: ${script_file} is empty or does not start with #!, not installing." >&2
     exit 1
   fi
+done
+
+# The scripts run as root or a tsm administrator from cron, so they and their directory must be root-owned
+if [[ -L "${script_dir}" ]]; then
+  echo "ERROR: ${script_dir} is a symlink, refusing to install into it." >&2
+  exit 1
+fi
+
+if ! install -d -o root -g root -m 0755 "${script_dir}"; then
+  echo "ERROR: could not create ${script_dir}" >&2
+  exit 1
 fi
 
 for script_file in "${scripts[@]}"; do
-  if ! cp "${tmp_dir}/${script_file}" "${script_dir}/"; then
-    echo "ERROR: could not copy ${script_file} to ${script_dir}" >&2
+  if ! install -o root -g root -m 0755 "${tmp_dir}/${script_file}" "${script_dir}/${script_file}"; then
+    echo "ERROR: could not install ${script_file} to ${script_dir}" >&2
     exit 1
   fi
-  chmod +x "${script_dir}/${script_file}"
 done
-
-if ! chown -R "${TABLEAU_SERVER_UNPRIVILEGED_USERNAME}:${TABLEAU_SERVER_UNPRIVILEGED_USERNAME}" "${script_dir}"; then
-  echo "ERROR: could not set ownership on ${script_dir}" >&2
-  exit 1
-fi
 
 # Script is set up, now to schedule in crontab
 echo 'Tableau Server housekeeping script is now installed. Please refer to the script documentation to schedule in crontab'
