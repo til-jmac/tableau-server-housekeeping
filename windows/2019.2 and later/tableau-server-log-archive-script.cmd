@@ -43,10 +43,12 @@ if %ERRORLEVEL% NEQ 0 (
 
 :: Let's grab a consistent date in the same format that Tableau Server writes the date to the end of the backup file name
 :set_date
-FOR /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') DO SET "dt=%%a"
-SET "YY=%dt:~2,2%" & SET "YYYY=%dt:~0,4%" & SET "MM=%dt:~4,2%" & SET "DD=%dt:~6,2%"
-SET "HH=%dt:~8,2%" & SET "Min=%dt:~10,2%" & SET "Sec=%dt:~12,2%"
-SET "mydate=%YYYY%-%MM%-%DD%"
+SET "mydate="
+FOR /F %%a IN ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"') DO SET "mydate=%%a"
+IF NOT DEFINED mydate (
+  ECHO %date% %time% : ERROR: Could not determine the current date using PowerShell.
+  EXIT /B 8
+)
 
 :: Parses command line parameters
 :parse_command_line_params
